@@ -1,6 +1,6 @@
 /* performance.c  -  Compute performance caracteristic of a motor
                      considering equilibrium                      */
-/* $Id: performance.c,v 1.1 2000/10/13 19:00:39 antoine Exp $ */
+/* $Id: performance.c,v 1.1 2000/10/13 19:24:31 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese  <pinese@cyberwizards.com.au>                        */
