@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.21 2000/07/03 03:19:13 antoine Exp $ */
+/* $Id: cpropep.c,v 1.22 2000/07/11 03:48:57 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -27,7 +27,7 @@
 #include "return.h"
 
 #define version "1.0"
-#define date    "23/05/2000"
+#define date    "10/07/2000"
 
 #define CHAMBER_MSG     "Time spent for computing chamber equilibrium"
 #define FROZEN_MSG      "Time spent for computing frozen performance"
@@ -38,41 +38,42 @@
                                     "%s: %f s\n\n", msg,\
                                     (double)(clock() - timer)/CLOCKS_PER_SEC)
 
-#define THERMO_FILE "new_thermo.dat"
+#define THERMO_FILE     "thermo.dat"
 #define PROPELLANT_FILE "propellant.dat"
 
-
-//#undef TIME
-//#define TIME(function, msg) function;
+#undef TIME
+#define TIME(function, msg) function;
 
 #define MAX_CASE 10
-
 
 typedef enum _p
 {
   SIMPLE_EQUILIBRIUM,
   FIND_FLAME_TEMPERATURE,
-  MULTIPLE_FLAME_TEMPERATURE,
   FROZEN_PERFORMANCE,
-  EQUILIBRIUM_PERFORMANCE,
-  ALL_PERFORMANCE,
-  MULTIPLE_PERFORMANCE
+  EQUILIBRIUM_PERFORMANCE
 } p_type;
 
 char case_name[][80] = {
   "Fixed pressure-temperature equilibrium",
   "Fixed enthalpy-pressure equilibrium - adiabatic flame temperature",
-  "Multiple adiabatic flame temperature problem",
   "Frozen equilibrium performance evaluation",
-  "Shifting equilibrium performance evaluation",
-  "Frozen and shifting equilibrium performance evaluation",
-  "Multiple performance evaluation problem"
+  "Shifting equilibrium performance evaluation"
 };
 
 typedef struct _case_t
 {
   p_type p;
-  double arg[6];
+
+  bool temperature_set;
+  bool pressure_set;
+  bool exit_condition_set;
+
+  double           temperature;
+  double           pressure;
+  exit_condition_t exit_cond_type;
+  double           exit_condition;
+  
 } case_t;
 
 
@@ -81,7 +82,7 @@ void welcome_message(void)
   printf("----------------------------------------------------------\n");
   printf("Cpropep is an implementation in standard C of the chemical\n"); 
   printf("equilibrium algorythm presented by GORDON and McBRIDE in the\n");
-  printf("NASA report SP-273.\n");
+  printf("NASA report RP-1311.\n");
   printf("This is the version %s %s\n", version, date);
   printf("This software is release under the GPL and is free of charge\n");
   printf("Copyright (C) 2000 Antoine Lefebvre <antoine.lefebvre@polymtl.ca>\n");
@@ -110,21 +111,19 @@ stdout if ommit\n");
 }
 
 
-//int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
 int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
 { 
-  double m;//tmp1, tmp2;
+  double m;
   
   int sp;
   int section = 0;
 
   int n_case = 0;
   
-  char buffer[128], tmp[10], num[10], qt[10];
+  char buffer[128], num[10], qt[10], unit[10];
+  char variable[64];
   
   char *bufptr;
-
-  char unit; /* unit of measure of the quantity */
 
   while ( fgets(buffer, 128, fd) != NULL )
   {
@@ -148,42 +147,25 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
             break;
           }
           else if ( strncmp(buffer, "Propellant", 10) == 0 )
+          {
             section = 1;
+          }
           else
           { 
             if (strncmp(buffer, "TP", 2) == 0)
               t[n_case].p = SIMPLE_EQUILIBRIUM;
             else if (strncmp(buffer, "HP", 2) == 0)
               t[n_case].p = FIND_FLAME_TEMPERATURE;
-            else if (strncmp(buffer, "MHP", 2) == 0)
-              t[n_case].p = MULTIPLE_FLAME_TEMPERATURE;
             else if (strncmp(buffer, "FR", 2) == 0)
               t[n_case].p = FROZEN_PERFORMANCE;
             else if (strncmp(buffer, "EQ", 2) == 0)
               t[n_case].p = EQUILIBRIUM_PERFORMANCE;
-            else if (strncmp(buffer, "PE", 2) == 0)
-              t[n_case].p = ALL_PERFORMANCE;
-            else if (strncmp(buffer, "MP", 2) == 0)
-              t[n_case].p = MULTIPLE_PERFORMANCE;
             else
             {
               printf ("Unknown option.\n");
               break;
             }
-
-            sscanf(buffer, "%s %lf %lf %lf %lf %lf %lf",
-                   tmp,
-                   t[n_case].arg,
-                   t[n_case].arg+1,
-                   t[n_case].arg+2,
-                   t[n_case].arg+3,
-                   t[n_case].arg+4,
-                   t[n_case].arg+5);
-
-            *pe = t[n_case].arg[2];
-            //sscanf(buffer, "%s %lf %lf %lf", tmp, &tmp1, &tmp2, pe);
-            set_state(e, t[n_case].arg[0], t[n_case].arg[1]);
-            n_case++;
+            section = 2;
           }
           
           break;
@@ -191,19 +173,20 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
       case 1:   /* propellant section */
           if (buffer[0] == '+')
           {
-            sscanf(buffer, "%s %s", num, qt);
+            sscanf(buffer, "%s %s %s", num, qt, unit);
             bufptr = num + 1;
             sp = atoi(bufptr);
-            unit = *(qt + strlen(qt) - 1);
-            
-            *(qt + strlen(qt) - 1) = '\n';
             
             m = atof(qt);
             
-            if ( unit == 'g') 
+            if (strcmp(unit, "g") == 0)
+            {
               add_in_propellant(e, sp, GRAM_TO_MOL(m, sp) );
-            else if (unit == 'm')
+            }
+            else if (strcmp(unit, "m") == 0)
+            {
               add_in_propellant(e, sp, m);
+            }
             else
             {
               printf("Unit must be g (gram) or m (mol)\n");
@@ -216,8 +199,67 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
             break;
           }
           else if (buffer[0] == ' ' || buffer[0] == '\n' || buffer[0] == '\0')
+          {
             section = 0;
+          }
           break;
+
+      case 2:
+          if (buffer[0] == '+')
+          {
+            sscanf(buffer, "%s %s %s", variable, qt, unit);
+
+            bufptr = variable + 1;
+
+            if (strcmp(bufptr, "chamber_temperature") == 0)
+            {
+              t[n_case].temperature     = atof(qt);
+              t[n_case].temperature_set = true;
+            }
+            else if (strcmp(bufptr, "chamber_pressure") == 0)
+            {
+              t[n_case].pressure     = atof(qt);
+              t[n_case].pressure_set = true;
+            }
+            else if (strcmp(bufptr, "exit_pressure") == 0)
+            {
+              t[n_case].exit_cond_type     = PRESSURE;
+              t[n_case].exit_condition     = atof(qt);
+              t[n_case].exit_condition_set = true;
+              
+            }
+            else if (strcmp(bufptr, "supersonic_area_ratio") == 0)
+            {
+              t[n_case].exit_cond_type = SUPERSONIC_AREA_RATIO;
+              t[n_case].exit_condition = atof(qt);
+              t[n_case].exit_condition_set = true;
+            }
+            else if (strcmp(bufptr, "subsonic_area_ratio") == 0)
+            {
+              t[n_case].exit_cond_type = SUBSONIC_AREA_RATIO;
+              t[n_case].exit_condition = atof(qt);
+              t[n_case].exit_condition_set = true;
+            }
+            else
+            {
+              printf("Unknown keyword.\n");
+              break;
+            }
+ 
+            break;
+
+          }
+          else if (buffer[0] == '#')
+          {
+            break;
+          }
+          else if (buffer[0] == ' ' || buffer[0] == '\n' || buffer[0] == '\0')
+          {
+            section = 0;
+            n_case++;
+          }
+          break;
+
           
       default:
           section = 0;
@@ -241,18 +283,19 @@ int main(int argc, char *argv[])
 
   double exit_pressure;
 
-  //int temp;
-
   clock_t timer;
 
-  int param;
-  
-//  p_type p;
+//  int param;
 
   case_t case_list[MAX_CASE];
   for (i = 0; i < MAX_CASE; i++)
+  {
     case_list[i].p = -1;
-
+    case_list[i].temperature_set = false;
+    case_list[i].pressure_set = false;
+    case_list[i].exit_condition_set = false;
+  }
+  
   errorfile = stderr;
   outputfile = stdout;
   
@@ -413,6 +456,7 @@ int main(int argc, char *argv[])
 
     frozen   = (equilibrium_t *) malloc (sizeof(equilibrium_t)*3);
     shifting = (equilibrium_t *) malloc (sizeof(equilibrium_t)*3);
+
     for (i = 0; i < 3; i++)
     {
       initialize_equilibrium(frozen + i);
@@ -439,7 +483,20 @@ int main(int argc, char *argv[])
       switch (case_list[i].p)
       {
         case SIMPLE_EQUILIBRIUM:
-            set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
+
+            if (!(case_list[i].temperature_set))
+            {
+              printf("Chamber temperature not set. Aborted.\n");
+              break;
+            }
+            else if (!(case_list[i].pressure_set))
+            {
+              printf("Chamber pressure not set. Aborted.\n");
+              break;
+            }
+
+            equil->properties.T = case_list[i].temperature;
+            equil->properties.P = case_list[i].pressure;
             
             print_propellant_composition(equil);
             TIME(if (equilibrium(equil, TP)) break,
@@ -448,9 +505,17 @@ int main(int argc, char *argv[])
             print_product_properties(equil, 1);
             print_product_composition(equil, 1);
             break;
+
         case FIND_FLAME_TEMPERATURE:
-            set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
-            
+
+            if (!(case_list[i].pressure_set))
+            {
+              printf("Chamber pressure not set. Aborted.\n");
+              break;
+            }
+
+            equil->properties.P = case_list[i].pressure;
+                        
             print_propellant_composition(equil);
             TIME(if (equilibrium(equil, HP)) break,
                  CHAMBER_MSG);
@@ -458,36 +523,32 @@ int main(int argc, char *argv[])
             print_product_properties(equil, 1);
             print_product_composition(equil, 1);
             break;
-        case MULTIPLE_FLAME_TEMPERATURE:
-            print_propellant_composition(equil);
 
-            for (param = case_list[i].arg[0];
-                 param < case_list[i].arg[2];
-                 param += case_list[i].arg[1])
-            {
-              set_state(equil, 0, param);
-
-              equilibrium(equil, HP);
-              
-              print_product_properties(equil, 1);
-              print_product_composition(equil, 1);
-            }
-            break;
-              
         case FROZEN_PERFORMANCE:
 
+            if (!(case_list[i].pressure_set))
+            {
+              printf("Chamber pressure not set. Aborted.\n");
+              break;
+            }
+            else if (!(case_list[i].exit_condition_set))
+            {
+              printf("Exit condition not set. Aborted.\n");
+              break;
+            }
+            
             copy_equilibrium(frozen, equil);
             
-            exit_pressure = case_list[i].arg[2];
-            set_state(frozen, case_list[i].arg[0], case_list[i].arg[1]);
-
+            equil->properties.T = case_list[i].temperature;
+            equil->properties.P = case_list[i].pressure;
+            
             print_propellant_composition(frozen);
 
             TIME(if (equilibrium(frozen, HP)) break,
                  CHAMBER_MSG);
 
-            TIME(frozen_performance(frozen, SUPERSONIC_AREA_RATIO,
-                                    exit_pressure),
+            TIME(frozen_performance(frozen, case_list[i].exit_cond_type,
+                                    case_list[i].exit_condition),
                  FROZEN_MSG);
             
             print_product_properties(frozen, 3);
@@ -496,18 +557,31 @@ int main(int argc, char *argv[])
             
           break;
         case EQUILIBRIUM_PERFORMANCE:
-            copy_equilibrium(shifting, equil);
+
             
-            exit_pressure = case_list[i].arg[2];
-            set_state(shifting, case_list[i].arg[0], case_list[i].arg[1]);
+            if (!(case_list[i].pressure_set))
+            {
+              printf("Chamber pressure not set. Aborted.\n");
+              break;
+            }
+            else if (!(case_list[i].exit_condition_set))
+            {
+              printf("Exit condition not set. Aborted.\n");
+              break;
+            }
+            
+            copy_equilibrium(shifting, equil);
+
+            equil->properties.T = case_list[i].temperature;
+            equil->properties.P = case_list[i].pressure;
             
             print_propellant_composition(shifting);
             
             TIME(if (equilibrium(shifting, HP)) break,
                  CHAMBER_MSG);
 
-            TIME(equilibrium_performance(shifting, SUPERSONIC_AREA_RATIO,
-                                         exit_pressure),
+            TIME(equilibrium_performance(shifting, case_list[i].exit_cond_type,
+                                         case_list[i].exit_condition),
                  EQUILIBRIUM_MSG);
 
             print_product_properties(shifting, 3);
@@ -515,61 +589,6 @@ int main(int argc, char *argv[])
             print_product_composition(shifting, 3);
             
             break;
-        case ALL_PERFORMANCE:
-/*
-            copy_equilibrium(frozen, equil);
-            copy_equilibrium(shifting, equil);
-            
-            exit_pressure = case_list[i].arg[2];
-            set_state(frozen, case_list[i].arg[0], case_list[i].arg[1]);
-            set_state(shifting, case_list[i].arg[0], case_list[i].arg[1]);
-            
-            print_propellant_composition(equil);
-
-            TIME(if (equilibrium(equil, HP)) break,
-               CHAMBER_MSG);
-            printf("--- Chamber equilibrium properties ---\n");
-            derivative(equil, &deriv);
-            print_product_properties(equil);
-            print_derivative_results(&deriv);
-            print_product_composition(equil);
-            TIME(frozen_performance(equil, &performance, exit_pressure),
-                 FROZEN_MSG);
-            TIME(equilibrium_performance(equil, exit_equil, &performance,
-                                         exit_pressure),
-                 EQUILIBRIUM_MSG);
-            print_performance_information(&performance);
-            
-            printf("--- Exit equilibrium properties ---\n");
-            print_product_properties(exit_equil);
-            print_product_composition(exit_equil);
-*/
-            break;
-        case MULTIPLE_PERFORMANCE:
-/*
-            set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
-            
-            print_propellant_composition(equil);
-            TIME(if (equilibrium(equil, HP)) break,
-               CHAMBER_MSG);
-            printf("--- Chamber equilibrium properties ---\n");
-            derivative(equil, &deriv);
-            print_product_properties(equil);
-            print_derivative_results(&deriv);
-            print_product_composition(equil);
-            for (exit_pressure = case_list[i].arg[2];
-                 exit_pressure < case_list[i].arg[4];
-                 exit_pressure += case_list[i].arg[3])
-            {
-              TIME(frozen_performance(equil, &performance, exit_pressure),
-                   FROZEN_MSG);
-              TIME(equilibrium_performance(equil, exit_equil, &performance,
-                                           exit_pressure),
-                   EQUILIBRIUM_MSG);
-              print_performance_information(&performance);
-            }
-            break;
-*/
       }
       i++;
     }

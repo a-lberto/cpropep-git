@@ -1,36 +1,64 @@
+# Cpropep is based on the theory presented by Gordon and McBride
+# in the NASA report RP-1311. You can download a pdf version of
+# this document at http://www.arocket.net/library/
 
+# The thermodynamics data file thermo.dat coma also from McBride
+# at the NASA Gleen Research center.
 
-Propellant
-#+211   15g      carbon
-#+765   75g      KNO3
-#+765   70g      KNO3
-+766   70g      KClO4
-#+840   30g      Sucrose
-#+963   0.5m     UDMH
-#+436   0.5m     Hyfrazine
-#+378   5g       Fluorine
-#+685   1m       Oxygene
-#+685    70g      Oxygene
-#+458   1m       Hydrogene
-#+976   5m       water
-#+578   1m       ch4
-#+258   1g       copper
-#+847   1g       sulphur
-#+685   90g      oxygen
-+788   20g      HTPB
-#+771   10g      propane
-+34    15g      Aluminium
-#+1026  20g      Asphalt
-#+375   1g       Ferric oxyde
-#+469    60g      Hydrogen Peroxyde (90%)
+# Here is an example of an input file to be use by cpropep.
+# Any line beginning by a '#' a space or a new_line is considered
+# as a comment.
 
-#perform a performance evaluation of the propellant
-EQ   2000  70  6 0 0 0
-FR   2000  70  6 0 0 0
-#PE  2000  100  1 0 0 0
-#HP   1000  100  1 0 0 0
-#HP  2000  90 1 0 0 0
-#MHP 20 10 100 0 0 0
-#TP  551.8  10   2 0 0 0
-#HP  1500  56   2 0 0 0
-#MP  2000 136 0.1 0.1 1
+# This file should first contain a section named 'Propellant' which
+# contain a list of all substance contain in the propellant. The 
+# number refer to an element in the data file containing propellant
+# information. In order to have a list of the substance, you could
+# invoque the program like that:  'cpropep -p'
+
+# There is two units that are support g (gram) or m (mole)
+
+Propellant HTPB/KClO4/Al
++766     70 g
++34      20 g
+
+# You could then specify a list of problem to be solve. There is 4
+# possible cases:
+
+# TP for temperature-pressure fixed problem
+# You have to specify the temperature and the pressure (of course)
+
+TP
++chamber_pressure    136  atm
++chamber_temperature 2000 k
+
+# HP for enthalpy-pressure fixed problem. It use the enthalpy of
+# the propellant describe at the beginning.
+
+# Only the chamber pressure shoud be specified. The temperature of
+# the product will be the adiabatic flame temperature.
+
+HP
++chamber_pressure 136 atm
+
+# FR is used to compute frozen performance.
+# You have to specify the chamber pressure and an exit condition.
+# This condition could be one of the following three:
+
+# exit_pressure:         pressure at the exit.
+# supersonic_area_ratio: exit to throat area for an area after the nozzle
+# subsonic_area_ratio:   exit to throat area for an area before any nozzle
+
+FR
++chamber_pressure      136 atm
++exit_pressure         1   atm
+#+supersonic_area_ratio 10
+#+subsonic_area_ratio   5
+
+# EQ is used to compute shifting equilibrium performance.
+# The options are the same as for frozen.
+
+EQ
++chamber_pressure      136 atm
+#+exit_pressure         1   atm
++supersonic_area_ratio 10
+#+subsonic_area_ratio   5
