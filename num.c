@@ -24,7 +24,7 @@
 #include "libnum.h"
 
 int function(int neq, double time, double *y, double *dy, 
-	     int ierr);
+	     void *data);
 
 int main(void)
 {
@@ -103,7 +103,7 @@ int main(void)
  
   
 
-  rk4 (function, 4, 0.1, 10, ic, ans);
+  rk4 (function, 4, 0.1, 10, ic, ans, NULL);
 
   for( i = 0; i < 100; i++)
     printf("%f  %f %f %f %f\n", i*0.1, ans[i][0], ans[i][1], 
@@ -124,7 +124,7 @@ int main(void)
 //}
 
 int function(int neq, double time, double *y, double *dy, 
-	     int ierr)
+	     void *data)
 {
   
   dy[0] = y[1];

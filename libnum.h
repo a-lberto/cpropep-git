@@ -69,6 +69,8 @@ DATE: February 6, 2000
 ***************************************************************/
 int lu(double **matrix, double *solution, int neq);
 
+int matsol(double **matrix, double *solution, int neq);
+
 
 /**************************************************************
 FUNCTION: This function print the coefficient of the matrix to
@@ -123,6 +125,11 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
 		  void *data), 
 	 int neq, double step, double duration, double *ic, 
 	 double **y, void *data );
+
+
+/* this function return the nearest integer to a */
+/* it is a replacement of rint which is not ANSI complient */
+int round(double a);
 
 #endif
 

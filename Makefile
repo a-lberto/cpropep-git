@@ -3,7 +3,7 @@
 
 CC   = gcc
 COPT = -g -Wall
-LIB  = 
+LIB  = -lcruft -lf2c
 
 
 PROG = num
@@ -12,6 +12,8 @@ OBJS = num.o libnum.o
 LIBNUM = libnum.a
 
 .SUFFIXES: .c
+
+all: $(PROG) $(LIBNUM)
 
 .c.o:
 	$(CC) $(COPT) -c $*.c -o $*.o

@@ -21,6 +21,46 @@
 #include <math.h>
 #include "libnum.h"
 
+/*from LAPACK */
+extern int dgesv_ (int*, int*, double*, int*, int*, double*, int*, int*);
+    
+int matsol(double **matrix, double *solution, int neq)
+{
+  int i, j;
+  int info;
+  
+  int    *ipvt; 
+  double *mat;
+  
+  mat  = (double *)malloc(sizeof(double)*neq*neq);
+  ipvt = (int *)   malloc(sizeof(int)*neq);
+
+  /* transform the matrix to fit with dgesv_ */
+  for (i = 0; i < neq; i++)     
+    for(j = 0; j < neq; j++)
+      mat[j+neq*i] = matrix[j][i];           
+
+  //copy the right hand side into the vector solution
+  for (i = 0; i < neq; i++) 
+    solution[i] = matrix[i][neq]; 
+
+  i = 1;
+  dgesv_(&neq, &i, mat, &neq, ipvt, solution, &neq, &info);
+
+  //printf("Dgesv return value: %d\n", info);
+  /* singular ? */
+  if (info > 0)
+    return -1;
+ 
+  
+  free(ipvt); 
+  free(mat);
+  
+  return 0; 
+} 
+
+
+
 int gauss(double **matrix, double *solution, int neq)
 {   
   int i = 0;
@@ -28,7 +68,7 @@ int gauss(double **matrix, double *solution, int neq)
   int k = 0;
   double m; /* multiplier */
   double s = 0.0; /* need to store a sommation */
-  double temp[neq+1];
+  double temp;
   
   for (k = 0; k < neq-1; k++)
   {
@@ -41,9 +81,9 @@ int gauss(double **matrix, double *solution, int neq)
 	{
 	  for (i = 0; i <= neq; i++)
 	  {
-	    temp[i] = matrix[j][i];
+	    temp = matrix[j][i];
 	    matrix[j][i] = matrix[k][i];
-	    matrix[k][i] = temp[i];
+	    matrix[k][i] = temp;
 	  }
 	}
 	/* the matrix is ready for the next step */
@@ -60,7 +100,7 @@ int gauss(double **matrix, double *solution, int neq)
       
       for (i = k; i <= neq; i++)
       {
-	matrix[j][i] = matrix[j][i] - m*matrix[k][i];
+        matrix[j][i] = matrix[j][i] - m*matrix[k][i];
       }
     }
   }
@@ -78,7 +118,7 @@ int gauss(double **matrix, double *solution, int neq)
     {
       s = 0.0;
       for (i = j + 1; i < neq; i++)
-	s += matrix[j][i]*solution[i];
+        s += matrix[j][i]*solution[i];
       
       solution[j] = (matrix[j][neq] - s)/matrix[j][j];
     }
@@ -261,7 +301,7 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
     tmp[i] = y[0][i];
   }
  
-  for (n = 0; n < (int)rint(duration/step); n++)
+  for (n = 0; n < (int)round(duration/step); n++)
   {
 
     for (i = 0; i < neq; i++)
@@ -269,8 +309,7 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
       f(neq, t, tmp, dy, data);
       K1[i] = step*dy[i];
       
-      tmp[i] = y[n][i] + K1[i]/2;  // for the next step
-           
+      tmp[i] = y[n][i] + K1[i]/2;  // for the next step           
     }
     
     for (i = 0; i < neq; i++)
@@ -312,6 +351,17 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
 
 
 
+int round(double a)
+{
+  int t = a;
+  
+  if (a - (double)t < 0.5)
+    return t;
+  else if (a - (double)t > 0.5)
+    return t + 1;
+  else
+    return (t + (t % 2));
+}
 
 
 
