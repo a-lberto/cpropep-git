@@ -25,9 +25,12 @@
 #include <malloc.h>
 /* #include <time.h> */
 
+#include "print.h"
 #include "equilibrium.h"
 #include "load.h"
 #include "libnum.h"
+
+#include "performance.h"
 
 #include "getopt.h"
 
@@ -65,6 +68,10 @@ void usage(void)
 {
   printf("Option list\n");
   printf("-f file \t Input file\n");
+  printf("-v num  \t Set the verbose level\n");
+  printf("-p      \t Print the propellant list\n");
+  printf("-t      \t print the combustion product list\n");
+
 }
 
 
@@ -259,7 +266,10 @@ int main(int argc, char *argv[])
     load_input(fd, equil, &p);
     fclose(fd);
     set_verbose(equil, v);
-    equilibrium(equil, p);
+
+    frozen_performance(equil, 1);
+    //equilibrium(equil, p);
+
     dealloc_equillibrium (equil);
   }
  

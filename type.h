@@ -8,4 +8,10 @@ typedef enum
   true = 1
 } bool;
 
+typedef enum
+{
+  SUCCESS = 0,
+  ERROR   = 1
+};
+
 #endif

@@ -11,7 +11,7 @@ LIBNAME = libcpropep.a
 
 PROG = cpropep
 
-LIBOBJS = equilibrium.o load.o
+LIBOBJS = equilibrium.o load.o print.o performance.o
 
 OBJS = cpropep.o getopt.o
 

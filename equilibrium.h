@@ -188,18 +188,6 @@ typedef struct _equilibrium
 FUNCTION PROTOTYPE SECTION
 ****************************************************************/
 
-
-/***************************************************************
-FUNCTION: Print the information of a specie in the thermo_list
-
-PARAMETER: an integer corresponding to the molecule
-
-AUTHOR: Antoine Lefebvre
-***************************************************************/
-int print_thermo_info(int sp);
-
-int print_propellant_info(int sp);
-
 /**************************************************************
 FUNCTION: This function allocate the memory for the two global
           list thermo_list and propellant_list
@@ -212,38 +200,6 @@ AUTHOR: Antoine Lefebvre
 int mem_alloc(void);
 
 
-/*************************************************************
-FUNCTION: Print the content of the respective list with the
-          number which refer to the molecule
-
-AUTHOR: Antoine Lefebvre
-        modification by Mark Pinese
-**************************************************************/
-int print_thermo_list(void);
-int print_propellant_list(void);
-
-/*************************************************************
-FUNCTION: Print the list of condensed species in the product
-
-PARAMETER: a structure of tupe product_t
-
-AUTHOR: Antoine Lefebvre
-**************************************************************/
-int print_condensed(product_t p);
-
-/*************************************************************
-FUNCTION: Print the list of gazeous species in the product
-
-PARAMETER: a structure of tupe product_t
-
-AUTHOR: Antoine Lefebvre
-**************************************************************/
-int print_gazeous(product_t p);
-
-
-
-int print_product_composition(equilibrium_t *e);
-int print_propellant_composition(equilibrium_t *e);
 
 int set_verbose(equilibrium_t *e, int v);
 
@@ -310,7 +266,7 @@ COMMENTS: It use the parametric form explain in the documentation
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-double enthalpy(int sp, float T);
+double enthalpy_0(int sp, float T);
 
 /*************************************************************
 FUNCTION: Return the entropy of the molecule in thermo_list[sp]
@@ -325,7 +281,9 @@ COMMENTS: It use the parametric form explain in the documentation
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-double entropy(int sp, float T);
+double entropy_0(int sp, float T);
+
+double entropy(int sp, state_t st, double nj, double n, float T, float P);
 
 /*************************************************************
 FUNCTION: Return the specific heat (Cp) of the molecule in 
@@ -340,7 +298,7 @@ COMMENTS: It use the parametric form explain in the documentation
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-double specific_heat(int sp, float T);
+double specific_heat_0(int sp, float T);
 
 
 /*************************************************************
@@ -377,6 +335,8 @@ double propellant_enthalpy(equilibrium_t *e);
 double product_enthalpy(equilibrium_t *e);
 double product_entropy(equilibrium_t *e);
 
+double propellant_mass(equilibrium_t *e);
+
 /*************************************************************
 FUNCTION: Return the gibbs free energy of the molecule in 
           thermo_list[sp] at temperature T. (uo/RT)
@@ -387,7 +347,7 @@ PARAMETER: sp is the position in the array of the molecule
 COMMENTS: g = H - ST where H is the enthalpy, T the temperature
           and S the entropy.
 **************************************************************/
-double gibbs0(int sp, float T);
+double gibbs_0(int sp, float T);
 
 
 /*************************************************************

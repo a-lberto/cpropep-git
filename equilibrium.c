@@ -25,6 +25,7 @@
 #include <malloc.h>
 /* #include <time.h> */
 
+#include "print.h"
 #include "equilibrium.h"
 #include "load.h"
 #include "libnum.h"
@@ -38,13 +39,12 @@ propellant_t	*propellant_list;
 thermo_t	    *thermo_list;
 
 
-double conc_tol   = 1e-8;
+double conc_tol   = 1e-15;
 double conv_tol   = 0.5e-5;
 int iteration_max = 200;
 
 /* 1 for verbose, 0 for non-verbose */
 int global_verbose = 0;
-
 
 int global_error = 0;
 
@@ -54,21 +54,23 @@ VARIABLE: Contain the molar mass of element by atomic number
           Data come from Sargent-Welch 1996
 *****************************************************************/
 const float molar_mass[N_SYMB] = { 
-  1.00794, 4.00260, 6.941, 9.01218, 10.811, 12.011,
-  14.0067, 15.9994, 18.99840, 20.11797, 22.99977, 24.305, 
-  26.98154, 28.0855, 30.97376, 32.066, 35.4527, 39.948, 
-  39.0983, 40.078, 44.9559, 47.88, 50.9415, 51.996, 54.938, 
-  55.847, 58.9332, 58.6934, 63.546, 65.39, 69.723, 72.61, 
-  74.9216, 78.96,79.904, 83.80, 85.4678, 87.62, 88.9059, 91.224, 92.9064,
-  95.94,
-  98.0,101.07, 102.9055, 106.42, 107.868, 112.41, 114.82, 118.71, 121.757,
-  127.60,126.9045, 131.29, 132.9054, 137.33, 138.9055, 140.12, 140.9077,
-  144.24,145., 150.36, 151.965, 157.25, 158.9253, 162.50,164.9303,167.26,
-  168.9342,173.04, 174.967, 178.49, 180.9479, 183.85, 186.207, 190.2,
-  192.22,195.08, 196.9665,200.59, 204.383,207.2, 208.9804, 209., 210.,
-  222.,223.,226.0254,227.,232.0381,231.0359,238.029,237.0482,244.,
-  12.011,9.01218,10.811,24.305,26.98154, 257.0,
-  0, 2};
+  1.00794,  4.00260, 6.941,    9.01218,  10.811,   12.011,
+  14.0067,  15.9994, 18.99840, 20.11797, 22.99977, 24.305, 
+  26.98154, 28.0855, 30.97376, 32.066,   35.4527,  39.948, 
+  39.0983,  40.078,  44.9559,  47.88,    50.9415,  51.996,
+  54.938,   55.847,  58.9332,  58.6934,  63.546,   65.39,
+  69.723,   72.61,   74.9216,  78.96,    79.904,   83.80,
+  85.4678,  87.62,   88.9059,  91.224,   92.9064,  95.94,
+  98.0,     101.07,  102.9055, 106.42,   107.868,  112.41,
+  114.82,   118.71,  121.757,  127.60,   126.9045, 131.29,
+  132.9054, 137.33,  138.9055, 140.12,   140.9077, 144.24,
+  145.,     150.36,  151.965,  157.25,   158.9253, 162.50,
+  164.9303, 167.26,  168.9342, 173.04,   174.967,  178.49,
+  180.9479, 183.85,  186.207,  190.2,    192.22,   195.08,
+  196.9665, 200.59,  204.383,  207.2,    208.9804, 209.,
+  210.,     222.,    223.,     226.0254, 227.,     232.0381,
+  231.0359, 238.029, 237.0482, 244.,     12.011,   9.01218,
+  10.811,   24.305,  26.98154, 257.0,    0,        2};
 
 
 /****************************************************************
@@ -96,99 +98,131 @@ VARIABLE: molar gaz constant in J/(mol K)
 ****************************************************************/
 const float  R = 8.3143; 
 
-
-double enthalpy(int sp, float T)
+/* Enthalpy in the standard state */
+double enthalpy_0(int sp, float T)
 {
-  thermo_t s = *(thermo_list + sp);
+  thermo_t *s = (thermo_list + sp);
   double val;
-  int i;
-     
-  for (i = 0; i < 4; i++)
+  int i, pos;
+
+  if (T < s->range[0][0]) /* Temperature below the lower range */
   {
-    if ((T >= s.range[i][0]) && (T < s.range[i][1])) 
+    pos = 0;
+  }       /*Temperature above the higher range */
+  else if (T >= s->range[s->nint-1][1]) 
+  {
+    pos = s->nint - 1;
+  }
+  else
+  {
+    for (i = 0; i < s->nint; i++) /* Find the range */
     {
-      /* parametric equation for dimentionless enthalpy */
-      val = -s.param[i][0]*pow(T, -2) + s.param[i][1]*pow(T, -1)*log(T) +
-        s.param[i][2] + s.param[i][3]*T/2 + s.param[i][4]*pow(T, 2)/3 +
-        s.param[i][5]*pow(T, 3)/4 + s.param[i][6]*pow(T, 4)/5 +
-        s.param[i][7]/T;
-      
-      return val; /* dimensionless enthalpy */
+      if ((T >= s->range[i][0]) && (T < s->range[i][1]))
+        pos = i;
     }
   }
-
-  if (global_verbose > 1)
-    printf("Error: temperature(%.0f) out of range for %d: %s\n", T,
-           sp, s.name);
-
-  global_error = 1;
-  return -1;
-}
-
-
-double entropy(int sp, float T)
-{
-  thermo_t s = thermo_list[sp];
-  double val;
-  int i;
   
-  for (i = 0; i < 4; i++)
-  {
-    if ((T >= s.range[i][0]) && (T < s.range[i][1]))
-    {	
-      /* parametric equation for dimentionless entropy */
-      val = -s.param[i][0]*pow(T, -2)/2 - s.param[i][1]*pow(T, -1)
-        + s.param[i][2]*log(T) + s.param[i][3]*T +s.param[i][4]*pow(T, 2)/2
-        + s.param[i][5]*pow(T, 3)/6 + s.param[i][6]*pow(T, 4)/4 
-        + s.param[i][8];
-      
-      return val; /* dimensionless entropy */
-    }
-  }
+  /* parametric equation for dimentionless enthalpy */
+  val = -s->param[pos][0]*pow(T, -2) + s->param[pos][1]*pow(T, -1)*log(T) +
+    s->param[pos][2] + s->param[pos][3]*T/2 + s->param[pos][4]*pow(T, 2)/3 +
+    s->param[pos][5]*pow(T, 3)/4 + s->param[pos][6]*pow(T, 4)/5 +
+    s->param[pos][7]/T;
 
-  if (global_verbose > 1)
-    printf("Error: temperature(%.0f) out of range for %d: %s\n", T,
-           sp, s.name);
-
-  global_error = 1;
-  return -1;
+  return val; /* dimensionless enthalpy */
+  
+  //if (global_verbose > 1)
+  //  printf("Error: temperature(%.0f) out of range for %d: %s\n", T,
+  //         sp, s.name);
+  //global_error = 1;
+  //return -1;
 }
 
-double specific_heat(int sp, float T)
+/* Entropy in the stabdard state */
+double entropy_0(int sp, float T)
 {
-  thermo_t s = thermo_list[sp];
+  thermo_t *s = (thermo_list + sp);
   double val;
-  int i;
-     
-  for (i = 0; i < 4; i++)
+  int i, pos;
+
+  if (T < s->range[0][0])
   {
-    if ((T >= s.range[i][0]) && (T < s.range[i][1])) 
-    {	
-      /* parametric equation for dimentionless entropy */
-      val = s.param[i][0]*pow(T, -2) + s.param[i][1]*pow(T, -1)
-        + s.param[i][2] + s.param[i][3]*T +s.param[i][4]*pow(T, 2)
-        + s.param[i][5]*pow(T, 3) + s.param[i][6]*pow(T, 4);
-      
-      return val; /* dimensionless */
+    pos = 0;
+  }
+  else if (T >= s->range[s->nint-1][1])
+  {
+    pos = s->nint - 1;
+  }
+  else
+  {
+    for (i = 0; i < s->nint; i++)
+    {
+      if ((T >= s->range[i][0]) && (T < s->range[i][1]))
+        pos = i;
     }
   }
+  
+  /* parametric equation for dimentionless entropy */
+  val = -s->param[pos][0]*pow(T, -2)/2 - s->param[pos][1]*pow(T, -1)
+    + s->param[pos][2]*log(T) + s->param[pos][3]*T
+    + s->param[pos][4]*pow(T, 2)/2
+    + s->param[pos][5]*pow(T, 3)/6 + s->param[pos][6]*pow(T, 4)/4 
+    + s->param[pos][8];
+  
+  return val;
+  
+  //if (global_verbose > 1)
+  //  printf("Error: temperature(%.0f) out of range for %d: %s\n", T,
+  //         sp, s.name);
+  //global_error = 1;
+  //return -1;
+}
 
-  if (global_verbose > 1)
-    printf("Error: temperature(%.0f) out of range for %d: %s\n", T,
-           sp, s.name);
+/* Specific heat in the standard state */
+double specific_heat_0(int sp, float T)
+{
+  thermo_t *s = (thermo_list + sp);
+  double val;
+  int i, pos;
 
-  global_error = 1;
-  return -1;
+  if (T < s->range[0][0])
+  {
+    pos = 0;
+  }
+  else if (T >= s->range[s->nint-1][1])
+  {
+    pos = s->nint - 1;
+  }
+  else
+  {
+    for (i = 0; i < s->nint; i++)
+    {
+      if ((T >= s->range[i][0]) && (T < s->range[i][1]))
+        pos = i;
+    }
+  }
+  
+  /* parametric equation for dimentionless specific_heat */
+  val = s->param[pos][0]*pow(T, -2) + s->param[pos][1]*pow(T, -1)
+    + s->param[pos][2] + s->param[pos][3]*T + s->param[pos][4]*pow(T, 2)
+    + s->param[pos][5]*pow(T, 3) + s->param[pos][6]*pow(T, 4);
+
+  return val;
+  
+  // if (global_verbose > 1)
+  // printf("Error: temperature(%.0f) out of range for %d: %s\n", T,
+  //        sp, s.name);
+  //global_error = 1;
+  //return -1;
 }
 
 /* 0 if out of range, 1 if ok */
 int temperature_check(int sp, float T)
 {
   int i;
-  thermo_t s = thermo_list[sp];
-  for (i = 0; i < 4; i++)
+  thermo_t *s = (thermo_list + sp);
+  for (i = 0; i < s->nint; i++)
   {
-    if ((T >= s.range[i][0]) && (T < s.range[i][1]))
+    if ((T >= s->range[i][0]) && (T < s->range[i][1]))
       return 1;
   }
   return 0;
@@ -198,14 +232,36 @@ int temperature_check(int sp, float T)
 double delta_enthalpy(int sp, float T)
 {
   /* delta henthalpy in J/mol */
-  return enthalpy(sp, T)*R*T - (thermo_list + sp)->heat;
+  return enthalpy_0(sp, T)*R*T - (thermo_list + sp)->heat;
+}
+
+
+double entropy(int sp, state_t st, double nj, double n, float T, float P)
+{
+  double s;
+  
+  if ( (st == GAS) && (nj == 0.0))
+    return 0;
+  
+  switch (st)
+  {
+    case GAS:    
+        s = entropy_0(sp, T) - log(nj/n) - log(P);
+        break;
+    case CONDENSED:
+        s = entropy_0(sp, T);
+        break;
+    default:
+        s = 0;
+  }  
+  return s;
 }
 
 
 /* uo = HO(T) - S(T)  (from the nasa book) */
-double gibbs0(int sp, float T)
+double gibbs_0(int sp, float T)
 {
-  return enthalpy(sp, T) - entropy(sp, T);
+  return enthalpy_0(sp, T) - entropy_0(sp, T); /* dimensionless */
 }
 
 /* J/mol T is in K, P is in atm */
@@ -219,10 +275,10 @@ double gibbs(int sp, state_t st, double nj, double n, float T, float P)
   switch (st)
   {
     case GAS:    
-        g = gibbs0(sp, T) + log(nj/n) + log(P);
+        g = gibbs_0(sp, T) + log(nj/n) + log(P);
         break;
     case CONDENSED:
-        g = gibbs0(sp, T);
+        g = gibbs_0(sp, T);
         break;
     default:
         g = 0;
@@ -261,116 +317,41 @@ double propellant_enthalpy(equilibrium_t *e) //composition_t *c)
   return h;
 }
 
-double product_enthalpy(equilibrium_t *e) //product_t *p, double T)
+double product_enthalpy(equilibrium_t *e)
 {
   int i;
   double h = 0.0;
   /* for gases */
   for (i = 0; i < e->p->n[GAS]; i++)
   {
-    h += e->p->coef[GAS][i]*enthalpy(e->p->species[GAS][i], e->T);
+    h += e->p->coef[GAS][i]*enthalpy_0(e->p->species[GAS][i], e->T);
   }
   /* for condensed */
   for (i = 0; i < e->p->n[CONDENSED]; i++)
   {
-    h += e->p->coef[CONDENSED][i]*enthalpy(e->p->species[CONDENSED][i], e->T);
+    h += e->p->coef[CONDENSED][i]*enthalpy_0(e->p->species[CONDENSED][i], e->T);
   }
   return h;
 }
 
-double product_entropy(equilibrium_t *e) //product_t *p, double T)
+double product_entropy(equilibrium_t *e)
 {
   int i;
   double ent = 0.0;
   for (i = 0; i < e->p->n[GAS]; i++)
   {
-    ent += e->p->coef[GAS][i]*entropy(e->p->species[GAS][i], e->T);
+    ent += e->p->coef[GAS][i]*entropy(e->p->species[GAS][i], GAS,
+                                      e->p->coef[GAS][i],
+                                      e->n, e->T, e->P);
   }
   for (i = 0; i < e->p->n[CONDENSED]; i++)
   {
-    ent += e->p->coef[CONDENSED][i]*entropy( e->p->species[CONDENSED][i], 
-                                             e->T);
+    ent += e->p->coef[CONDENSED][i]*entropy(e->p->species[CONDENSED][i],
+                                            CONDENSED,
+                                            e->p->coef[CONDENSED][i],
+                                            e->n, e->T, e->P);
   }
   return ent;
-}
-
-int print_propellant_info(int sp)
-{
-  int j;
-
-  if (sp > MAX_PROPELLANT || sp < 0)
-    return -1;
-  
-  printf("Code %-35s Enthalpy  Density  Composition\n", "Name");
-  printf("%d  %-35s % .2f % .2f", sp,
-         (propellant_list + sp)->name,
-         (float)(propellant_list + sp)->heat,
-         (propellant_list + sp)->density);
-  
-  printf("  ");
-  /* print the composition */
-  for (j = 0; j < 6; j++)
-  {
-    if (!((propellant_list + sp)->coef[j] == 0))
-      printf("%d%s ", (propellant_list + sp)->coef[j],
-             symb[ (propellant_list + sp)->elem[j] ]);
-  }
-  printf("\n");
-  return 0;
-}
-
-
-
-int print_thermo_info(int sp)
-{
-  int   i, j;
-  thermo_t s;
-
-  if (sp > MAX_THERMO || sp < 0)
-    return -1;
-
-  s = *(thermo_list + sp);
-  
-  printf("---------------------------------------------\n");
-  printf("Name: \t\t\t%s\n", s.name);
-  printf("Comments: \t\t%s\n", s.comments);
-  printf("Id: \t\t\t%s\n", s.id);
-  printf("Chemical formula:\t");
-  
-  for (i = 0; i < 5; i++)
-  {
-    if (!(s.coef[i] == 0))
-      printf("%d%s", s.coef[i], symb[ s.elem[i]]);
-  }
-  printf("\n");
-  printf("State:\t\t\t");
-  switch (s.state)
-  {
-    case GAS:
-        printf("GAZ\n");
-        break;
-    case CONDENSED:
-        printf("CONDENSED\n");
-        break;
-    default:
-        printf("UNRECOGNIZE\n");
-  }
-  
-  printf("\n");
-  printf("Molecular weight: \t\t% f g/mol\n", s.weight);
-  printf("Heat of formation at 298.15 K : % f J/mol\n", s.heat);
-  printf("HO(298.15) - HO(0): \t\t% f J/mol\n", s.dho);
-  printf("Number of temperature range: % d\n\n", s.nint);
-  
-  for (i = 0; i < s.nint; i++)
-  {
-    printf("Interval: %f - %f \n", s.range[i][0], s.range[i][1]);
-    for (j = 0; j < 9; j++)
-      printf("% Le ", s.param[i][j]);
-    printf("\n\n");
-  }
-  printf("---------------------------------------------\n");
-  return 0;
 }
 
 int thermo_search(char *str)
@@ -405,113 +386,6 @@ int propellant_search(char *str)
   return last;
   
 }
-
-int print_thermo_list(void)
-{
-  int i;
-  for (i = 0; i < MAX_THERMO; i++)
-    printf("%-4d %-15s % .2f\n", i, (thermo_list + i)->name,
-           (thermo_list + i)->heat);
-  
-  return 0;
-}
-
-int print_propellant_list(void)
-{
-  int i;
-  for (i = 0; i < MAX_PROPELLANT; i++)
-    printf("%-4d %-30s %5d\n", i, (propellant_list + i)->name,
-           (propellant_list +i)->heat);
- 
-  return 0;
-}
-
-int print_condensed(product_t p)
-{
-  int i;
-  for (i = 0; i < p.n[CONDENSED]; i ++)
-    printf("%s ",  (thermo_list + p.species[CONDENSED][i])->name );
-  printf("\n");
-  return 0;
-}
-
-int print_gazeous(product_t p)
-{
-  int i;
-  for (i = 0; i < p.n[GAS]; i++)
-    printf("%s ", (thermo_list + p.species[GAS][i])->name );
-  printf("\n");
-  return 0;
-}
-
-int print_product_composition(equilibrium_t *e)
-{
-  int i;
-  
-  printf("%.4e mol of gaz\n", e->n);
-  printf("molar fraction \t mol \t\t free energy\n");
-  for (i = 0; i < e->p->n[GAS]; i++)
-  {
-    if (!(e->p->coef[GAS][i] == 0.0))
-      printf("% .4e \t% .4e \t %f \t %s\n", 
-             e->p->coef[GAS][i]/e->n,
-             e->p->coef[GAS][i],
-             gibbs0(e->p->species[GAS][i], e->T),
-             (thermo_list + e->p->species[GAS][i])->name);
-  }
-  if (e->p->n[CONDENSED] > 0)
-    printf("Condensed species (mol)\n");
-  for (i = 0; i < e->p->n[CONDENSED]; i++)
-  {
-    printf("%s  % .4e\n", (thermo_list + e->p->species[CONDENSED][i])->name,
-           e->p->coef[CONDENSED][i]);
-  }
-  printf("Molar mass of product: % f g/mol\n", product_molar_mass(e));
-  printf("Products enthalpy:     % f\n", product_enthalpy(e)*R*e->T);
-  printf("Products entropy:      % f\n", product_entropy(e)*R);
-         
-  return 0;
-}
-
-int print_propellant_composition(equilibrium_t *e)
-{
-  int i, j;
-  double enth = 0.0;
-  
-  printf("Propellant composition\n");
-  printf("Code %-35s mol    Mass (g)  Composition\n", "Name");
-  for (i = 0; i < e->c->ncomp; i++)
-  {
-    printf("%-4d  %-35s %.4f %.4f ", e->c->molecule[i],
-           (propellant_list + e->c->molecule[i])->name,
-           e->c->coef[i], 
-           e->c->coef[i]*propellant_molar_mass( e->c->molecule[i] ) );
-    
-    printf("  ");
-    /* print the composition */
-    for (j = 0; j < 6; j++)
-    {
-      if (!((propellant_list + e->c->molecule[i])->coef[j] == 0))
-        printf("%d%s ", (propellant_list + e->c->molecule[i])->coef[j],
-               symb[ (propellant_list + e->c->molecule[i])->elem[j] ]);
-    }
-    printf("\n");
-  }
-  
-  printf("\n");
-  printf("Propellant properties\n");
-
-
-  enth = propellant_enthalpy (e);
-
-  /* not sure of the t, 273.15 or e->T */
-  printf("Enthalpy: %.2f Joules  %.2f Joules/(RT)\n", enth*R*e->T, enth);
-  
-  printf("\n");
-  return 0;
-  
-}
-
 
 double product_molar_mass(equilibrium_t *e)
 {
@@ -567,12 +441,15 @@ int list_element(equilibrium_t *e)
   }
   e->n_element = n;
 
-  printf("%d different elements in the propellant\n", n);
-  /* Print those elements */
-  for (i = 0; i < n; i++)
-    printf("%s ", symb[e->element[i]] );
-  printf("\n");
-
+  if (e->verbose > 0)
+  {
+    printf("%d different elements in the propellant\n", n);
+    /* Print those elements */
+    for (i = 0; i < n; i++)
+      printf("%s ", symb[e->element[i]] );
+    printf("\n");
+  }
+  
   return n;
 }
 
@@ -604,10 +481,10 @@ int list_product(equilibrium_t *e)
     }
     if (ok) /* add to the list */
     {
-      st = thermo_list[j].state;
+      st = (thermo_list + j)->state;
 
-      /* maybe useful to add every possible product */ 
-      if (temperature_check(j, e->T) || 1)  // if the molecule could 
+      /* maybe useful to add every possible product  || 1 */ 
+      if (temperature_check(j, e->T))  // if the molecule could 
                                         // exist at that temperature
       {
         e->p->species[st][ e->p->n[st] ] = j;
@@ -640,18 +517,19 @@ int list_product(equilibrium_t *e)
   for (i = 0; i < e->p->n[CONDENSED]; i++)
     e->p->coef[CONDENSED][i] = 0;
 
-  
-  printf("%d possible combustion product\n", n);
-  printf("%d gazeous species\n", e->p->n[GAS]);
-  if (e->verbose > 1)
-    print_gazeous(*(e->p));
-  printf("%d condensed species\n", e->p->n[CONDENSED]);
-  if (e->verbose > 1)
-    print_condensed(*(e->p));
+  if (e->verbose > 0)
+  {
+    printf("%d possible combustion product\n", n);
+    printf("%d gazeous species\n", e->p->n[GAS]);
+    if (e->verbose > 1)
+      print_gazeous(*(e->p));
+    printf("%d condensed species\n", e->p->n[CONDENSED]);
+    if (e->verbose > 1)
+      print_condensed(*(e->p));
+  }
   
   return n;
 }
-
 
 
 int mem_alloc(void)
@@ -774,6 +652,17 @@ int add_in_propellant(equilibrium_t *e, int sp, double mol)
   return 0;
 }
 
+/* Mass of propellant in gram */
+double propellant_mass(equilibrium_t *e)
+{
+  int i;
+  double mass = 0.0;
+  for (i = 0; i < e->c->ncomp; i++)
+  {
+    mass += e->c->coef[i]*propellant_molar_mass(e->c->molecule[i]);
+  }
+  return mass;
+}
 
 int product_element_coef(int element, int molecule)
 {
@@ -803,6 +692,45 @@ int set_verbose(equilibrium_t *e, int v)
   return 0;
 }
 
+
+/* Compute an initial estimate of the product composition using
+   a method develop by G. Eriksson */
+int initial_estimate(equilibrium_t *e)
+{
+  int i, j, mol;
+  int components = e->p->n[GAS] + e->p->n[CONDENSED];
+  double energy[components];
+
+  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  {
+    mol = 0;
+    for (j = 0; j < 5; j++)
+      mol += (thermo_list + e->p->species[CONDENSED][i])->coef[j];
+
+    energy[i] = (enthalpy_0(e->p->species[CONDENSED][i], e->T) -
+                 entropy_0(e->p->species[CONDENSED][i], e->T))*R*e->T/mol;
+    printf("%s \t %f \t %i\n",
+           (thermo_list + e->p->species[CONDENSED][i])->name,
+           energy[i], mol);
+  }
+  for (i = 0; i < e->p->n[GAS]; i++)
+  {
+    mol = 0;
+    for (j = 0; j < 5; j++)
+      mol += (thermo_list + e->p->species[GAS][i])->coef[j];
+    
+    energy[i + e->p->n[CONDENSED]] = (enthalpy_0(e->p->species[GAS][i],
+                                               e->T) -
+                                      entropy_0(e->p->species[GAS][i],
+                                              e->T))*R*e->T/mol;
+    
+    printf("%s \t %f \t %i\n",
+           (thermo_list + e->p->species[GAS][i])->name,
+           energy[i + e->p->n[CONDENSED]], mol);
+  }
+  
+  return 0;
+}
 
 /* use the theory explain in
 Theorical Evaluation of chemical propellant
@@ -869,7 +797,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
       tmp = 0.0;
       for (k = 0; k < e->p->n[GAS]; k++) {
         tmp += product_element_coef( e->element[j], e->p->species[GAS][k]) *
-          e->p->coef[GAS][k] * enthalpy( e->p->species[GAS][k], e->T);
+          e->p->coef[GAS][k] * enthalpy_0( e->p->species[GAS][k], e->T);
       }
       matrix[j][ e->n_element + e->p->n[CONDENSED] + 1] = tmp;
     }
@@ -905,8 +833,8 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   {
     for (j = 0; j < e->p->n[CONDENSED]; j++) // row
     {
-      matrix[j + e->n_element ][i] = product_element_coef(e->element[i],
-                                                          e->p->species[CONDENSED][j]);
+      /* copy the symetric part of the matrix */
+      matrix[j + e->n_element ][i] = matrix[i][j + e->n_element ];
     }
   }
   
@@ -924,7 +852,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   {
     for (j = 0; j < e->p->n[CONDENSED]; j++) // row
       matrix[ j + e->n_element ][ e->n_element + e->p->n[CONDENSED] + 1] = 
-        enthalpy( e->p->species[CONDENSED][j], e->T);
+        enthalpy_0( e->p->species[CONDENSED][j], e->T);
   }
 
 
@@ -939,12 +867,9 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   // third big row
   for (i = 0; i < e->n_element; i++) // each column
   {   
-      tmp = 0.0;
-      for (k = 0; k < e->p->n[GAS]; k++)
-        tmp += product_element_coef( e->element[i], e->p->species[GAS][k] ) * 
-          e->p->coef[GAS][k];
-
-      matrix[ e->n_element + e->p->n[CONDENSED] ][i] = tmp;      
+    /* copy the symetric part of the matrix */
+    matrix[ e->n_element + e->p->n[CONDENSED] ][i] =
+      matrix[i][ e->n_element + e->p->n[CONDENSED] ];
   }
 
   /* set to zero */
@@ -960,7 +885,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   /* delta ln(T) */
   tmp = 0.0;
   for (k = 0; k < e->p->n[GAS]; k++)
-    tmp += e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T ); 
+    tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T ); 
   matrix[e->n_element + e->p->n[CONDENSED]][e->n_element + e->p->n[CONDENSED] 
                                            + 1] = tmp;
 
@@ -985,7 +910,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
       tmp = 0.0;
       for (k = 0; k < e->p->n[GAS]; k++)
         tmp += product_element_coef( e->element[i], e->p->species[GAS][k] ) * 
-          e->p->coef[GAS][k] * enthalpy( e->p->species[GAS][k], e->T);
+          e->p->coef[GAS][k] * enthalpy_0( e->p->species[GAS][k], e->T);
       
       matrix[ e->n_element + e->p->n[CONDENSED] + 1 ][i] = tmp;      
     }
@@ -993,12 +918,12 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     // Delta n
     for (i = 0; i < e->p->n[CONDENSED]; i++)
       matrix[ e->n_element + e->p->n[CONDENSED] + 1 ][i + e->n_element] = 
-        enthalpy( e->p->species[CONDENSED][i], e->T);
+        enthalpy_0( e->p->species[CONDENSED][i], e->T);
 
     // Delta ln(n)
     tmp = 0.0;
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T ); 
+      tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T ); 
 
     matrix[e->n_element + e->p->n[CONDENSED] + 1][e->n_element + 
                                                  e->p->n[CONDENSED] ] = tmp;
@@ -1006,15 +931,15 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
 
     tmp = 0.0;
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*specific_heat( e->p->species[GAS][k], e->T );
+      tmp += e->p->coef[GAS][k]*specific_heat_0( e->p->species[GAS][k], e->T );
 
     for (k = 0; k < e->p->n[CONDENSED]; k++)
       tmp += e->p->coef[CONDENSED][k]*
-        specific_heat( e->p->species[CONDENSED][k], e->T);
+        specific_heat_0( e->p->species[CONDENSED][k], e->T);
 
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T)*
-        enthalpy( e->p->species[GAS][k], e->T);
+      tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T)*
+        enthalpy_0( e->p->species[GAS][k], e->T);
     
     matrix[e->n_element + e->p->n[CONDENSED] + 1][e->n_element +
                                                  e->p->n[CONDENSED] + 1] = tmp;
@@ -1035,7 +960,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     tmp = propellant_enthalpy(e) - product_enthalpy(e);
     
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T)*
+      tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T)*
         gibbs( e->p->species[GAS][k], GAS, e->p->coef[GAS][k], e->n, 
                e->T, e->P);
     
@@ -1051,7 +976,9 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
       tmp = 0.0;
       for (k = 0; k < e->p->n[GAS]; k++)
         tmp += product_element_coef( e->element[i], e->p->species[GAS][k] ) * 
-          e->p->coef[GAS][k] * entropy( e->p->species[GAS][k], e->T);
+          e->p->coef[GAS][k] * entropy(e->p->species[GAS][i], GAS,
+                                       e->p->coef[GAS][i],
+                                       e->n, e->T, e->P);
       
       matrix[ e->n_element + e->p->n[CONDENSED] + 1][i] = tmp;      
     }
@@ -1059,28 +986,32 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     // Delta n
     for (i = 0; i < e->p->n[CONDENSED]; i++)
       matrix[ e->n_element + e->p->n[CONDENSED] + 1 ][i + e->n_element] = 
-        entropy( e->p->species[CONDENSED][i], e->T);
+        entropy_0( e->p->species[CONDENSED][i], e->T); /* ok for condensed */
     
 
     // Delta ln(n)
     tmp = 0.0;
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*entropy( e->p->species[GAS][k], e->T ); 
+      tmp += e->p->coef[GAS][k]*entropy(e->p->species[GAS][i], GAS,
+                                        e->p->coef[GAS][i],
+                                        e->n, e->T, e->P);
 
     matrix[e->n_element + e->p->n[CONDENSED] + 1][e->n_element + 
                                                  e->p->n[CONDENSED] ] = tmp;
     
     tmp = 0.0;
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*specific_heat( e->p->species[GAS][k], e->T );
+      tmp += e->p->coef[GAS][k]*specific_heat_0( e->p->species[GAS][k], e->T );
 
     for (k = 0; k < e->p->n[CONDENSED]; k++)
       tmp += e->p->coef[CONDENSED][k]*
-        specific_heat( e->p->species[CONDENSED][k], e->T);
+        specific_heat_0( e->p->species[CONDENSED][k], e->T);
 
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T)*
-        entropy( e->p->species[GAS][k], e->T);
+      tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T)*
+        entropy(e->p->species[GAS][i], GAS,
+                e->p->coef[GAS][i],
+                e->n, e->T, e->P);
     
     matrix[e->n_element + e->p->n[CONDENSED] + 1][e->n_element +
                                                  e->p->n[CONDENSED] + 1] = tmp;
@@ -1090,10 +1021,10 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     /* entropy of reactant (not sure for the value of R */
     tmp += 132; // assign entropy
 
-    /* enthalpy of condensed ??? */
-    
-    for (k = 0; k < e->p->n[GAS]; k++)
-      tmp -= e->p->coef[GAS][k]*entropy( e->p->species[GAS][k], e->T);
+    tmp -= product_entropy(e);
+      
+      //for (k = 0; k < e->p->n[GAS]; k++)
+      //tmp -= e->p->coef[GAS][k]*entropy_0( e->p->species[GAS][k], e->T);
 
     tmp += e->n;
 
@@ -1101,9 +1032,11 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
       tmp -= e->p->coef[GAS][k];
 
     for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += e->p->coef[GAS][k]*entropy( e->p->species[GAS][k], e->T)*
-        gibbs( e->p->species[GAS][k], GAS, e->p->coef[GAS][k], e->n,
-               e->T, e->P);
+      tmp += e->p->coef[GAS][k]*gibbs(e->p->species[GAS][k], GAS,
+                                      e->p->coef[GAS][k], e->n, e->T, e->P)*
+        entropy(e->p->species[GAS][i], GAS,
+                e->p->coef[GAS][i],
+                e->n, e->T, e->P);
     
     matrix[e->n_element + e->p->n[CONDENSED] + 1][e->n_element +
                                                  e->p->n[CONDENSED] + 2] = tmp;
@@ -1165,9 +1098,9 @@ int include_condensed(equilibrium_t *e, int *n, int *size,
         temp += sol[k]*product_element_coef(e->element[k], 
                                             e->p->species[CONDENSED][i]);
       
-      if ( gibbs0( e->p->species[CONDENSED][i], e->T) - temp < tmp )
+      if ( gibbs_0( e->p->species[CONDENSED][i], e->T) - temp < tmp )
       {
-        tmp = gibbs0( e->p->species[CONDENSED][i], e->T) - temp;
+        tmp = gibbs_0( e->p->species[CONDENSED][i], e->T) - temp;
         j = i; 
       }
     }
@@ -1333,12 +1266,12 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   double ** matrix;   
   double  * sol;
 
-  bool      stop = false;
   bool      convergence_ok;
+  bool      stop           = false;
   bool      gas_reinserted = false;
-  bool      solution_ok = false;
+  bool      solution_ok    = false;
 
-  int i, j, k;
+  int i, k;
 
   int n_condensed;  /* number of condensed species */
 
@@ -1362,6 +1295,10 @@ int equilibrium(equilibrium_t *equil, problem_t P)
 
   n_condensed = equil->p->n[CONDENSED];
 
+  /* First determine an initial estimate of the composition
+     to accelerate the convergence */
+  /* initial_estimate(equil); */
+  
   /* initially, we do not consider the condensed */
   equil->p->n[CONDENSED] = 0;
   equil->n = 0.1; /* initial estimate of the mol number */
@@ -1377,8 +1314,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   // allocate the memory for the solution vector
   sol = (double *) calloc (size, sizeof(double));
 
-
-  
+ 
   /* main loop */
   for (k = 0; k < iteration_max; k++)
   {
@@ -1398,7 +1334,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
       if (equil->verbose > 1)
         print_matrix(matrix, size);
     
-      if ( lu(matrix, sol, size) == -1 || global_error)
+      if ( lu(matrix, sol, size) == -1)
       {
         /* the matrix have no unique solution */
         printf("The matrix is singular, removing excess condensed.\n");
