@@ -174,20 +174,35 @@ double delta_enthalpy(int sp, float T)
 }
 
 
-/* J/mol */
-double gibbs(int sp, float T)
+/* J/mol T is in K, P is in atm */
+double gibbs(int sp, state_t st, double nj, double n, float T, float P)
 {
-  /* G = H -TS */
-  return enthalpy(sp, T) - T * entropy(sp, T);
+
+  double g;
+
+  switch (st)
+  {
+  case GAS:    
+    g = ( enthalpy(sp, T) - T * entropy(sp, T) )
+      + R*T*log(nj/n) + R*T*log(P);
+    break;
+  case CONDENSED:
+    g = ( enthalpy(sp, T) - T * entropy(sp, T) );
+    
+  default:
+    g = 0;
+  }
+  
+  return g/(R*T);
 }
 
 
 /* kJ/mol */
-double potential(int sp, float T)
-{
+//double potential(int sp, float T)
+//{
   /* u = Hf - TS */
-  return enthalpy(sp, T)/1000  - T *  entropy(sp, T)/1000;
-}
+//  return enthalpy(sp, T)/1000  - T *  entropy(sp, T)/1000;
+//}
 
 
 /* give the molar mass of a propellant or pruduct in g/mol */
@@ -375,13 +390,13 @@ int list_product(int n_element, int *element_list, product_t *p, float T)
       printf("Reallocation of memory failed\n");
   }
 
-  // initialize the coef to zero
-  for (j = 0; j < STATE_LAST; j++)
-  {
-    for (i = 0; i < p->n[j]; i++)
-      p->coef[j][i] = 0.01/p->n[j];
-  }
   
+  for (i = 0; i < p->n[GAS]; i++)
+    p->coef[GAS][i] = 0.1/p->n[GAS];
+ 
+  for (i = 0; i < p->n[CONDENSED]; i++)
+    p->coef[CONDENSED][i] = 0;
+
   return e;
 }
 
@@ -499,7 +514,8 @@ int propellant_element_coef(int element, int molecule)
 Theorical Evaluation of chemical propellant
 by Roger Lawrence Wilkins
 Prentice-Hall International series in space technology */
-int fill_matrix(double **matrix, int n_elements, int *element, product_t p)
+int fill_matrix(double **matrix, int n_elements, int *element, product_t *p, 
+		composition_t *b)
 {
 
   int i, j, k;
@@ -511,95 +527,118 @@ int fill_matrix(double **matrix, int n_elements, int *element, product_t p)
     for (j = 0; j < n_elements; j++) // each row
     {
       tmp = 0.0;
-      for (k = 0; k < p.n[GAS]; k++)
-  	tmp += product_element_coef( element[j], p.species[GAS][k]) * 
-	  product_element_coef( element[i], p.species[GAS][k] ) * 
-	  p.coef[GAS][k];  
+      for (k = 0; k < p->n[GAS]; k++)
+  	tmp += product_element_coef( element[j], p->species[GAS][k]) * 
+	  product_element_coef( element[i], p->species[GAS][k] ) * 
+	  p->coef[GAS][k];  
       matrix[j][i] = tmp;
     }
   }
   
-  // u + 1
-  for (j = 0; j < n_elements; j++)
-  {
-    tmp = 0.0;
-    for (k = 0; k < p.n[GAS]; k++)
-  	tmp += product_element_coef( element[j], p.species[GAS][k]) * 
-	  p.coef[GAS][k];
-    matrix[j][ n_elements ] = tmp;
-  }
-
   // X1c
-  for (i = 0; i < p.n[CONDENSED]; i++) // column
+  for (i = 0; i < p->n[CONDENSED]; i++) // column
   {
     for (j = 0; j < n_elements; j++) // row
     {
-      matrix[j][i + n_elements + 1] = product_element_coef(element[j], 
-						      p.species[CONDENSED][i]);
+      matrix[j][i + n_elements ] = product_element_coef(element[j], 
+						      p->species[CONDENSED][i]);
     }
   } 
 
+  // delta ln(n)
+  for (j = 0; j < n_elements; j++)
+  {
+    tmp = 0.0;
+    for (k = 0; k < p->n[GAS]; k++)
+  	tmp += product_element_coef( element[j], p->species[GAS][k]) * 
+	  p->coef[GAS][k];
+    matrix[j][ n_elements + p->n[CONDENSED] ] = tmp;
+  }
+
+
 
   mol = 0.0;
-  for (k = 0; k < p.n[GAS]; k++)
-    mol += p.coef[GAS][k];
+  for (k = 0; k < p->n[GAS]; k++)
+    mol += p->coef[GAS][k];
 
   // right side
   for (j = 0; j < n_elements; j++)
   {
     tmp = 0.0;
-    for (k = 0; k < p.n[GAS]; k++)
-  	tmp += product_element_coef( element[j], p.species[GAS][k]) * 
-	  (( potential( p.species[GAS][k], 1200)/(R*1200) + log(136) ) +
-	   log( p.coef[GAS][k] / mol ))*p.coef[GAS][k];
+    for (k = 0; k < p->n[GAS]; k++)
+  	tmp += product_element_coef( element[j], p->species[GAS][k]) * 
+	  p->coef[GAS][k] * gibbs( p->species[GAS][k], GAS, p->coef[GAS][k],
+				  mol, 1200, 136);
+
 
     // b[i]
     for (k = 0; k < STATE_LAST; k++)
-      for (i = 0; i < p.n[k]; i++)
-	tmp += product_element_coef( element[i], p.species[k][i]) *
-	  p.coef[k][i];
+      for (i = 0; i < p->n[k]; i++)
+	tmp -= product_element_coef( element[j], p->species[k][i]) *
+	  p->coef[k][i];
+    
+    // b[i]o
+    for (i = 0; i < b->ncomp; i++)
+      tmp += propellant_element_coef( element[j], b->molecule[i]) *
+	b->coef[i];
 
-    matrix[j][ n_elements + p.n[CONDENSED] + 1 ] = tmp;  
+
+    matrix[j][ n_elements + p->n[CONDENSED] + 1 ] = tmp;  
   }
 
-  // second big row
-  for (i = 0; i < n_elements; i++) // each column
-  {   
-      tmp = 0.0;
-      for (k = 0; k < p.n[GAS]; k++)
-  	tmp += product_element_coef( element[i], p.species[GAS][k] ) * 
-	  p.coef[GAS][k];
 
-      matrix[ n_elements ][i] = tmp;      
-  }
-
-  tmp = 0.0;
-  for (k = 0; k < p.n[GAS]; k++)
-  {
-    tmp += (( potential( p.species[GAS][k], 1200)/(R*1200) + log(136) ) +
-	    log( p.coef[GAS][k] / mol ))*p.coef[GAS][k];
-  }
-  matrix[ n_elements ][ n_elements + p.n[CONDENSED] + 1] = tmp;
-
-  //third row
+  //second row
   for (i = 0; i < n_elements; i++) // column
   {
-    for (j = 0; j < p.n[CONDENSED]; j++) // row
+    for (j = 0; j < p->n[CONDENSED]; j++) // row
     {
       //      printf("%d\n",j);
-      matrix[j + n_elements + 1 ][i] = product_element_coef(element[i],
-					       p.species[CONDENSED][j]);
+      matrix[j + n_elements ][i] = product_element_coef(element[i],
+					       p->species[CONDENSED][j]);
     }
   }
 
   
   // right side
-  for (j = 0; j < p.n[CONDENSED]; j++) // row
+  for (j = 0; j < p->n[CONDENSED]; j++) // row
   {
-    matrix[ j + n_elements + 1][ n_elements + p.n[CONDENSED] + 1] = 
-      potential( p.species[CONDENSED][j], 1200)/(R*1200);
+    matrix[ j + n_elements ][ n_elements + p->n[CONDENSED] + 1] = 
+      gibbs( p->species[GAS][j], GAS, p->coef[GAS][j],
+	     mol, 1200, 136);
   
   }
+
+
+  // third big row
+  for (i = 0; i < n_elements; i++) // each column
+  {   
+      tmp = 0.0;
+      for (k = 0; k < p->n[GAS]; k++)
+  	tmp += product_element_coef( element[i], p->species[GAS][k] ) * 
+	  p->coef[GAS][k];
+
+      matrix[ n_elements + p->n[CONDENSED] ][i] = tmp;      
+  }
+
+  // delta ln(n)
+  tmp = 0.0;
+  for (k = 0; k < p->n[GAS]; k++)
+    tmp += p->coef[GAS][k];
+  matrix[ n_elements + p->n[CONDENSED] ][ n_elements + p->n[CONDENSED] ] = 
+    tmp - mol;
+
+
+  tmp = 0.0;
+  for (k = 0; k < p->n[GAS]; k++)
+  {
+    tmp += p->coef[GAS][k]*gibbs( p->species[GAS][j], GAS, p->coef[GAS][j],
+				 mol, 1200, 136) +
+      p->coef[GAS][k];
+  }
+
+  matrix[n_elements + p->n[CONDENSED] ][ n_elements + p->n[CONDENSED] + 1] = 
+    mol - tmp;
+
 
   return 0;
 }
@@ -649,10 +688,10 @@ int main(int argc, char *argv[])
   /* Create a propellant */
   propellant.ncomp = 2;
   //propellant.molecule[0] = 34;  // AL
-  propellant.molecule[0] = 685; // O2
-  propellant.molecule[1] = 458; // H2
-  //propellant.molecule[0] = 766; // KCLO4
-  //propellant.molecule[1] = 788; // HTPB
+  //propellant.molecule[0] = 685; // O2
+  //propellant.molecule[1] = 458; // H2
+  propellant.molecule[0] = 766; // KCLO4
+  propellant.molecule[1] = 788; // HTPB
   //propellant.coef[0] = GRAM_TO_MOL(10, propellant.molecule[0]);
   propellant.coef[0] = GRAM_TO_MOL(70, propellant.molecule[0]);
   propellant.coef[1] = GRAM_TO_MOL(30, propellant.molecule[1]);
@@ -688,10 +727,10 @@ int main(int argc, char *argv[])
   sol = (double *) calloc (size, sizeof(double));
 
 
-  //fill_matrix(matrix, n_elements, element, product);
-  //print_matrix(matrix, size);
-  //gauss(matrix, sol, size);
-  //print_vec(sol, size);
+  fill_matrix(matrix, n_elements, element, &product, &propellant);
+  print_matrix(matrix, size);
+  gauss(matrix, sol, size);
+  print_vec(sol, size);
  
 
   ch4 = thermo_search("C3H6");

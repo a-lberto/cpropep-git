@@ -287,7 +287,7 @@ COMMENTS: g = H - ST where H is the enthalpy, T the temperature
           and S the entropy, so it call enthalpy(...) end
 	  entropy(...)
 **************************************************************/
-double gibbs(int sb, float T);
+double gibbs(int sb, state_t st, double nj, double n, float T, float P);
 
 
 
