@@ -233,8 +233,9 @@ int print_vec(double *vec, int neq)
 }
 
 int rk4( int (*f)(int neq, double time, double *y, double *dy, 
-		  int ierr), 
-	 int neq, double step, double duration, double *ic, double **y )
+		  void *data), 
+	 int neq, double step, double duration, double *ic, 
+	 double **y, void *data)
 {
   int i;
   int n;
@@ -264,7 +265,7 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
 
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, 0);
+      f(neq, t, tmp, dy, data);
       K1[i] = step*dy[i];
       
       tmp[i] = y[n][i] + K1[i]/2;  // for the next step
@@ -273,7 +274,7 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, 0);
+      f(neq, t, tmp, dy, data);
       K2[i] = step*dy[i];
       
       tmp[i] = y[n][i] + K2[i]/2;
@@ -281,7 +282,7 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, 0);
+      f(neq, t, tmp, dy, data);
       K3[i] = step*dy[i];
       
       tmp[i] = y[n][i] + K3[i];
@@ -289,7 +290,7 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, 0);
+      f(neq, t, tmp, dy, data);
       K4[i] = step*dy[i];
     }
     

@@ -106,6 +106,8 @@ PARAMETER: The first parameter is a pointer to the function we
 	   duration is the total time of the simulation
 	   ic are the initial conditions
 	   **y is an array containing all the data
+	   
+	   void * is nay user data
 
 COMMENTS: **y must be properly allocated, [number of points]X[neq]
 
@@ -118,8 +120,11 @@ AUTHOR: Antoine Lefebvre
 DATE: February 11
 *****************************************************************/
 int rk4( int (*f)(int neq, double time, double *y, double *dy, 
-		  int ierr), 
-	 int neq, double step, double duration, double *ic, double **y );
+		  void *data), 
+	 int neq, double step, double duration, double *ic, 
+	 double **y, void *data );
 
 #endif
+
+
 
