@@ -352,6 +352,35 @@ int print_product_composition(equilibrium_t *e)
   return 0;
 }
 
+int print_propellant_composition(equilibrium_t *e)
+{
+  int i, j;
+
+  printf("Propellant composition\n");
+  printf("Code %-35s mol    Mass (g)  Composition\n", "Name");
+  for (i = 0; i < e->c->ncomp; i++)
+  {
+    printf("%d  %-35s %.4f %.4f ", e->c->molecule[i],
+	   (propellant_list + e->c->molecule[i])->name,
+	   e->c->coef[i], 
+	   e->c->coef[i]*propellant_molar_mass( e->c->molecule[i] ) );
+
+    printf("  ");
+    /* print the composition */
+    for (j = 0; j < 6; j++)
+    {
+      if (!((propellant_list + e->c->molecule[i])->coef[j] == 0))
+	printf("%d%s ", (propellant_list + e->c->molecule[i])->coef[j],
+	       symb[ (propellant_list + e->c->molecule[i])->elem[j] ]);
+    }
+    printf("\n");
+  }
+  printf("\n");
+  return 0;
+
+}
+
+
 double product_molar_mass(equilibrium_t *e)
 {
   int i;
@@ -638,44 +667,6 @@ int set_verbose(equilibrium_t *e, int v)
   return 0;
 }
 
-double min(double a, double b, double c)
-{
-  if (a < b)
-    {
-      if (a < c)
-	return a;
-      else if (b < c)
-	return b;
-      else
-	return c;
-    }
-  else if (b < c)
-    return b;
-  else 
-    return c;
-
-  return 0;
-}
-
-
-double max(double a, double b, double c)
-{
-  if (a > b)
-    {
-      if (a > c)
-	return a;
-      else if (b > c)
-	return b;
-      else
-	return c;
-    }
-  else if (b > c)
-    return b;
-  else
-    return c;
-  
-  return 0;
-}
 
 /* use the theory explain in
 Theorical Evaluation of chemical propellant
@@ -818,24 +809,29 @@ int fill_matrix(double **matrix, equilibrium_t *e)
 }
 
 
+/* may be optimize!!!!!!!! */
 int remove_condensed(int *size, int *n, equilibrium_t *e)
 {
 
-  int i;
-
+  int i, j;
   int r = 0;
 
   for (i = 0; i < e->p->n[CONDENSED]; i++)
   {
+    //printf("%s \n", (thermo_list + e->p->species[CONDENSED][i])->name );
+
     if (e->p->coef[CONDENSED][i] <= 0.0)
     {
       printf("%s should be remove\n", 
 	     (thermo_list + e->p->species[CONDENSED][i])->name );
       /* remove from the list */
-      e->p->species[CONDENSED][i] = 
-	e->p->species[CONDENSED][(*n) - 1];
+      for (j = i; j < e->p->n[CONDENSED]; j++)
+      {
+	e->p->species[CONDENSED][j] = 
+	  e->p->species[CONDENSED][j + 1];
+      }
       (*n)--;
-      e->p->n[CONDENSED]--;
+      e->p->n[CONDENSED] = e->p->n[CONDENSED] - 1;
       (*size)--;
       r = 1;
     }
@@ -913,10 +909,10 @@ int equilibrium(equilibrium_t *equil)
 
   int i, j, k;
 
-  double tmp;
   int    n_condensed;
-  int    pos;
 
+
+  print_propellant_composition(equil);
 
   list_element(equil);
   list_product(equil);
@@ -1006,7 +1002,7 @@ int equilibrium(equilibrium_t *equil)
     {
       if ((equil->p->coef[GAS][i]/equil->n > conc_tol) && 
 	  (equil->delta_ln_nj[i] > 0))
-	lambda1 = max( lambda1, fabs(equil->delta_ln_n), 
+	lambda1 = _max( lambda1, fabs(equil->delta_ln_n), 
 		       fabs(equil->delta_ln_nj[i]));
     }
     lambda1 = 2/lambda1;
@@ -1016,13 +1012,12 @@ int equilibrium(equilibrium_t *equil)
     {
       if ((equil->p->coef[GAS][i]/equil->n <= conc_tol) && 
 	  (equil->delta_ln_nj[i]>0))
-	lambda2 = min(lambda2, fabs( ((-log(equil->p->coef[GAS][i]/equil->n) 
+	lambda2 = __min(lambda2, fabs( ((-log(equil->p->coef[GAS][i]/equil->n) 
 				       - 9.2103404)/(equil->delta_ln_nj[i] - 
-						     equil->delta_ln_n))), 
-		      1e12);
+						     equil->delta_ln_n))) );
     }
    
-    lambda = min(1, lambda1, lambda2);
+    lambda = _min(1, lambda1, lambda2);
     
   
     /* compute the new value for nj (gazeous) */
@@ -1120,8 +1115,12 @@ int equilibrium(equilibrium_t *equil)
     }
     else
       if (equil->verbose > 1)
-	printf("The solution doesn't converge\n\n");
-    
+	{
+	  printf("The solution doesn't converge\n\n");
+	  //remove_condensed(&size, &n_condensed, equil);
+	}
+
+
     /* suppose that it will converge the next time */
     convergence_ok = 1;
     

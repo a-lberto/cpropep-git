@@ -29,8 +29,12 @@
 #include "load.h"
 #include "libnum.h"
 
+#include "getopt.h"
+
+
 #define version "1.0"
 #define date "27/02/2000"
+
 
 /* global variable containing the information about chemical species */
 extern propellant_t  *propellant_list;
@@ -53,37 +57,66 @@ void welcome_message(void)
   printf("----------------------------------------------------------\n");
 }
 
+void info(char **argv) {
+  printf("Try `%s -h' for more information\n", argv[0]);
+}
+
+void usage(void)
+{
+  printf("Option list\n");
+  printf("-f file \t Input file\n");
+}
+
+
 int main(int argc, char *argv[])
 {
   
-  int i;
+  //int i;
+  int c;
+  
+  char filename[128];
 
   equilibrium_t *equil;
 
-  //for (i = 0; i < argc; i++)
-  //{
-  //  if ( argv[i][0] == '-' )
-  //  {
-  //    switch (argv[i][1])
-  //    {
-  //    case 'a':
-  //	printf("%s\n", (argv[i] + 1) );
-  //	break;
-  //    case 'c':
-  //	printf("%s\n", (argv[i] + 1) );
-  //	break;
-  //    default:
-  //	printf("Unknown option\n");
-  //   }
-  //  }
-  //}
-  //printf("%s\n",argv[i]);
-    
+  while (1)
+  {
+    c = getopt(argc, argv, "ahf:");
+
+    if (c == EOF)
+      return 0;
+
+    switch (c)
+    {
+    case 'a':
+      printf("Got an a\n");
+      break;
+
+    case 'h':
+      usage();
+      break;
+
+    case 'f':
+      printf("%s\n", optarg);
+      if (strlen(optarg) > 128)
+      {
+	printf("Filename too long!\n");
+	break;
+      }
+      strncpy(filename, optarg, 128);
+      break;
+
+    case '?':
+      info(argv);
+      break;
+    }
+  }  
+
+
   equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
   initialize_equilibrium(equil);
 
   /* set the state for equil, temperature, pressure */
-  set_state(equil, 2598, 6);
+  set_state(equil, 650, 6);
 
   /* allocate memory to hold data */
   if (mem_alloc())
@@ -128,8 +161,5 @@ int main(int argc, char *argv[])
   free (thermo_list);
 
   return 0;
-  
+
 }
-
-
-

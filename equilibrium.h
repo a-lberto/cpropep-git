@@ -35,6 +35,11 @@ MACRO: Hold the number of species in for each type data type
 
 #define GRAM_TO_MOL(g, sp)   g/propellant_molar_mass(sp)
 
+#define __min(a, b) ( (a) <= (b) ? (a) : (b))
+#define __max(a, b) ( (a) >= (b) ? (a) : (b))
+
+#define _min(a, b, c) __min( __min(a, b), c)
+#define _max(a, b, c) __max( __max(a, b), c)
 
 /****************************************************************
 TYPE:  Enumeration of the possible state of a substance
@@ -45,6 +50,14 @@ typedef enum
   CONDENSED,
   STATE_LAST
 } state_t;
+
+
+typedef enum
+{
+  TP,          // assign temperature and pressure
+  HP,          // assign enthalpy and pressure
+  SP           // assign entropy and pressure
+} problem_t;
 
 
 /***************************************************************
@@ -474,11 +487,7 @@ int product_element_coef(int element, int molecule);
 int propellant_element_coef(int element, int molecule);
 
 
-/***************************************************************
-FUNCTION: Return the max or the min of three numbers
-****************************************************************/
-double min(double a, double b, double c);
-double max(double a, double b, double c);
+
 
 /***************************************************************
 FUNCTION: This function fill the matrix in function of the data
