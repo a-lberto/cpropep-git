@@ -11,10 +11,14 @@
 
 
 
+
 #ifdef _MSC_VER
   /* MSVC++ 6.0 Std */
 #define STRNCASECMP		_strnicmp
-	
+
+/* add for MSVC++ 5.0 */
+#define STRCASECMP _stricmp
+
 #ifdef _DEBUG
 #include <crtdbg.h>
 #endif /* defined (_DEBUG) */
@@ -31,7 +35,8 @@ typedef enum
 
 #ifdef GCC
 
-#define STRNCASECMP		strncasecmp
+#define STRCASECMP  strcasecmp
+#define STRNCASECMP	strncasecmp
 #define __min(a, b) ( (a) <= (b) ? (a) : (b))
 #define __max(a, b) ( (a) >= (b) ? (a) : (b))
 
