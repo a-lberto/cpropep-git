@@ -6,10 +6,14 @@
 #include "load.h"
 
 
+#define CAL_TO_JOULE 4.1868
+#define CLBS_TO_CCM  27.679905
+
 extern propellant_t	*propellant_list;
 extern thermo_t	        *thermo_list;
 
 extern char symb[][3];
+
 
 /***************************************************************************
 Initial format of thermo.dat:
@@ -149,13 +153,13 @@ int load_thermo(char *filename)
            the previous one but in a different state ... */
         if ( (thermo_list + i)->heat == 0.0 )
         {
-          l = 0;
+          l = 1;
             
           for (j = 0; j < 5; j++)
           {
             if (!((thermo_list+i)->coef[j] == (thermo_list+i-1)->coef[j] &&
                   (thermo_list+i)->elem[j] == (thermo_list+i-1)->elem[j]))
-            l = 1;
+              l = 0;
           }
           /* set to the same value as the previous one */
           if (l)
@@ -315,11 +319,11 @@ int load_propellant(char *filename)
       
       strncpy(tmp_ptr, buf_ptr + 69, 5);
       tmp[5] = '\0';		    
-      propellant_list[i].heat = atoi(tmp);
+      propellant_list[i].heat = atoi(tmp) * CAL_TO_JOULE;
       
       strncpy(tmp_ptr, buf_ptr + 75, 5);
       tmp[5] = '\0';
-      propellant_list[i].density = atof(tmp);
+      propellant_list[i].density = atof(tmp) * CLBS_TO_CCM;
       
       i++;
     }

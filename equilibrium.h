@@ -24,7 +24,7 @@
 /**************************************************************
 MACRO: Hold the number of species in for each type data type
 ***************************************************************/
-#define MAX_PROPELLANT 1024
+#define MAX_PROPELLANT 1030
 #define MAX_THERMO     1729
 
 /* MACRO: Number of different molecule in propellant */
@@ -42,6 +42,7 @@ MACRO: Hold the number of species in for each type data type
 #define _max(a, b, c) __max( __max(a, b), c)
 
 extern int global_verbose;
+extern const float R;
 
 /****************************************************************
 TYPE:  Enumeration of the possible state of a substance
@@ -100,9 +101,9 @@ typedef struct _propellant
   char  name[30];  /* name of the propellant */
   int   elem[6];   /* element in the molecule (atomic number) max 6 */
   int   coef[6];   /* stochiometric coefficient of this element 
-		      (0 for none) */
-  int   heat; /* heat of formation in cal/gram */
-  float density; /* density in pound/cubic inch */
+		                  (0 for none) */
+  int   heat;      /* heat of formation in Joule/gram */
+  float density;   /* density in g/cubic cm */
   
 } propellant_t;
 
@@ -197,7 +198,7 @@ AUTHOR: Antoine Lefebvre
 ***************************************************************/
 int print_thermo_info(int sp);
 
-
+int print_propellant_info(int sp);
 
 /**************************************************************
 FUNCTION: This function allocate the memory for the two global
@@ -258,9 +259,9 @@ COMMENTS: If nothing is found, it return -1
 AUTHOR: Antoine Lefebvre
         modification bye Mark Pinese
 **************************************************************/
-int thermo_search(const char *str);
+int thermo_search(char *str);
 
-
+int propellant_search(char *str);
 
 /************************************************************
 FUNCTION: This function search for all elements present in
@@ -372,9 +373,9 @@ AUTHOR: Antoine Lefebvre
 **************************************************************/
 double delta_enthalpy(int sp, float T);
 
-double propellant_enthalpy(composition_t *c);
-double product_enthalpy(product_t *p, double T);
-double product_entropy(product_t *p, double T);
+double propellant_enthalpy(equilibrium_t *e);
+double product_enthalpy(equilibrium_t *e);
+double product_entropy(equilibrium_t *e);
 
 /*************************************************************
 FUNCTION: Return the gibbs free energy of the molecule in 

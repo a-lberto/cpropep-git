@@ -36,150 +36,225 @@ s_cgi *cgi;
 
 #define URL "http://www.infodrom.north.de/cgilib/"
 
+#define THERMO_PATH "/home/antoine/projets/rocket/rocketworkbench/cpropep/thermo.dat"
+#define PROPELLANT_PATH "/home/antoine/projets/rocket/rocketworkbench/cpropep/propellant.dat"
+
 void init_equil(void)
 {
     /* allocate memory to hold data */
-    if (mem_alloc())
-	return ;
-    load_thermo ("/home/antoine/projets/rocket/rocketworkbench/cpropep/thermo.dat");
-    load_propellant ("/home/antoine/projets/rocket/rocketworkbench/cpropep/propellant.dat");
-
+  if (mem_alloc())
+    return ;
+  load_thermo (THERMO_PATH);
+  load_propellant (PROPELLANT_PATH);
+  
 }
 
 void destroy(void)
 {
-    free (propellant_list);
-    free (thermo_list);
+  free (propellant_list);
+  free (thermo_list);
 }
 
 int eval_cgi(equilibrium_t *e)
 {
-    int mol = 0;
-
-    char buffer[32];
-    double tmp;
-    double tmp1;
-
-    printf ("<h1>Results</h1>\n\n");
-
-    strncpy(buffer, cgiGetValue(cgi, "temp"), 32);
-    if ( ((tmp = atof(buffer)) != 0) && tmp > 298.15 && tmp < 6000 )
-	e->T = tmp;
-    else 
-	return -1;
-
-
-    strncpy(buffer, cgiGetValue(cgi, "pressure"), 32);
-    if ((tmp = atof(buffer)) != 0)
-	e->P = tmp;
-    else
-	return -1;
-    
-
-    if (strncmp("mol", cgiGetValue(cgi, "select"), 3) == 0)
-	mol = 1;
-
-    strncpy(buffer, cgiGetValue(cgi, "qt1"), 32);
-    tmp = atof(buffer);
-
-    strncpy(buffer,  cgiGetValue(cgi, "ml1"), 32);
-    tmp1 = atof(buffer);
+  int    mol = 0;
+  char   buffer[32];
+  double tmp;
+  double tmp1;
   
-    if ((tmp != 0) && (tmp1 != 0))
-    {
-	if (mol)
-	    add_in_propellant(e, tmp1, tmp);
-	else
-	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
-    }
-
-    strncpy(buffer, cgiGetValue(cgi, "qt2"), 32);
-    tmp = atof(buffer);
-
-    strncpy(buffer, cgiGetValue(cgi, "ml2"), 32);
-    tmp1 = atof(buffer);
+  printf ("<h1>Results</h1>\n\n");
     
-    if ((tmp != 0) && (tmp1 != 0))
-    {
-	if (mol)
-	    add_in_propellant(e, tmp1, tmp);
-	else
-	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
-    }
-    
-    strncpy(buffer, cgiGetValue(cgi, "qt3"), 32);
-    tmp = atof(buffer);
+  strncpy(buffer, cgiGetValue(cgi, "temp"), 32);
+  
+  if ( ((tmp = atof(buffer)) != 0) && tmp > 298.15 && tmp < 6000 )
+    e->T = tmp;
+  else 
+    return -1;
+  
+  strncpy(buffer, cgiGetValue(cgi, "pressure"), 32);
 
-    strncpy(buffer, cgiGetValue(cgi, "ml3"), 32);
-    tmp1 = atof(buffer);
+  if ((tmp = atof(buffer)) != 0)
+    e->P = tmp;
+  else
+    return -1;
+  
 
-    if ((tmp != 0) && (tmp1 != 0))
-    {
-	if (mol)
+  if (strncmp("mol", cgiGetValue(cgi, "select"), 3) == 0)
+    mol = 1;
+  
+  strncpy(buffer, cgiGetValue(cgi, "qt1"), 32);
+  tmp = atof(buffer);
+  
+  strncpy(buffer,  cgiGetValue(cgi, "ml1"), 32);
+  tmp1 = atof(buffer);
+  
+  if ((tmp != 0) && (tmp1 != 0))
+  {
+    if (mol)
 	    add_in_propellant(e, tmp1, tmp);
-	else
+    else
 	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
-    }
-    return 0;
+  }
+  
+  strncpy(buffer, cgiGetValue(cgi, "qt2"), 32);
+  tmp = atof(buffer);
+
+  strncpy(buffer, cgiGetValue(cgi, "ml2"), 32);
+  tmp1 = atof(buffer);
+  
+  if ((tmp != 0) && (tmp1 != 0))
+  {
+    if (mol)
+	    add_in_propellant(e, tmp1, tmp);
+    else
+	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
+  }
+  
+  strncpy(buffer, cgiGetValue(cgi, "qt3"), 32);
+  tmp = atof(buffer);
+  
+  strncpy(buffer, cgiGetValue(cgi, "ml3"), 32);
+  tmp1 = atof(buffer);
+  
+  if ((tmp != 0) && (tmp1 != 0))
+  {
+    if (mol)
+	    add_in_propellant(e, tmp1, tmp);
+    else
+	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
+  }
+  return 0;
 }
 
 int main (int argc, char **argv, char **env)
 {
-    char *path_info = NULL;
-    
-    equilibrium_t *equil;
-    
-    cgiDebug(0, 0);
-    cgi = cgiInit();
-    
-    init_equil();
+  char *path_info = NULL;  
+  equilibrium_t *equil;
+  char buffer[32];
 
-    path_info = getenv("PATH_INFO");
-    if (path_info) 
+  double value;
+  int val;
+  problem_t P = TP;
+  
+  
+  cgiDebug(0, 0);
+  cgi = cgiInit();
+  
+  init_equil();
+  
+  path_info = getenv("PATH_INFO");
+
+  if (path_info) 
+  {
+    if (!strcmp(path_info, "/list")) 
     {
-	if (!strcmp(path_info, "/list")) 
-	{
-            cgiHeader();
+      cgiHeader();
 	    printf("<pre>");
 	    print_propellant_list();
 	    printf("</pre>");
 	    
-	} 
-	else if (!strcmp(path_info, "/equil")) 
-	{
-            cgiHeader();
+    }
+    else if (!strcmp(path_info, "/list_thermo"))
+    {
+      cgiHeader();
+	    printf("<pre>");
+	    print_thermo_list();
+	    printf("</pre>");
+      
+    }
+    else if (!strcmp(path_info, "/search_thermo"))
+    {
+      cgiHeader();
+      printf("<pre>");
+      thermo_search( cgiGetValue(cgi, "formula"));
+      printf("</pre>");
+      
+      
+    }
+    else if (!strcmp(path_info, "/search_prop"))
+    {
+      cgiHeader();
+      printf("<pre>");
+      propellant_search( cgiGetValue(cgi, "name"));
+      //thermo_search( cgiGetValue(cgi, "formula"));
+      printf("</pre>");
 
+    } 
+    else if (!strcmp(path_info, "/equil")) 
+    {
+      cgiHeader();
+      
 	    equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
 	    initialize_equilibrium(equil);
-
+      
 	    if (eval_cgi(equil))
-		printf("<b>Error</b>");
+        printf("<b>Error</b>");
 	    else
 	    {
-		printf("<pre>");
-		set_verbose(equil, 1);
-		equilibrium(equil, TP);
-		printf("</pre>");
+        printf("<pre>");
+        set_verbose(equil, 1);
+
+        if (strncmp("Find", cgiGetValue(cgi, "type"), 4) == 0)
+          P = HP;
+ 
+        equilibrium(equil, P);
+        printf("</pre>");
 	    }
-
+      
 	    dealloc_equillibrium (equil);
+          
+    }
+    else if (!strcmp(path_info, "/prop"))
+    {
+      cgiHeader();
+      printf("<pre>");
+      strncpy(buffer, cgiGetValue(cgi, "propellant"), 32);
 
-	    
-	} 
-	else 
-	{
-	    cgiHeader();
-	    printf("<br>Bad queries<br>");
-	}
-    } 
+      if ( print_propellant_info (atoi (buffer)))
+        printf("Request out of range\n");
+     
+      printf("</pre>");
+      
+    }
+    else if (!strcmp(path_info, "/prod"))
+    {
+      
+      cgiHeader();
+      printf("<pre>");
+      strncpy(buffer, cgiGetValue(cgi, "product"), 32);
+      val = atoi (buffer);
+      
+      if ( print_thermo_info (val))
+        printf("Request out of range\n");
+      else
+      {
+        strncpy(buffer, cgiGetValue(cgi, "temp"), 32);
+        value = atof(buffer);
+
+        printf("Thermodynamics properties at temperature %.2f K\n", value);
+        printf("Enthalpy:      % f J/mol\n", enthalpy(val, value)*R*value);
+        printf("Entropy:       % f J/(mol K)\n", entropy(val, value)*R);
+        printf("Specific heat: % f J/(mol K)\n", specific_heat(val, value)*R);
+      
+      }
+      printf("</pre>");
+
+    }
     else 
     {
-	cgiHeader();
-	printf("<br>Bad queries<br>");
+	    cgiHeader();
+	    printf("<br>Bad queries<br>");
     }
-
-    printf ("\n<hr>\n</body>\n</html>\n");
-
-    destroy();
-    return 0;
+  } 
+  else 
+  {
+    cgiHeader();
+    printf("<br>Bad PATH_INFO<br>");
+  }
+  
+  printf ("\n<hr>\n</body>\n</html>\n");
+  
+  destroy();
+  return 0;
 }
+

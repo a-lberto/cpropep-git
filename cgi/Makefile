@@ -1,6 +1,6 @@
 CC   = gcc
 COPT = -g -Wall
-LIB  =  -lcpropep -lm -lnum -lcgi
+LIB  =  -lcpropep -lm -lnum -lcgi #-lcruft -lf2c
 LIBDIR = -L../../libnum/ -L../
 INCLUDEDIR = -I../../libnum/ -I../
 
