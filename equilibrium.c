@@ -1,5 +1,5 @@
 /* equilibrium.c  -  Responsible of the chemical equilibrium          */
-/* $Id: equilibrium.c,v 1.16 2000/07/03 03:19:13 antoine Exp $ */
+/* $Id: equilibrium.c,v 1.17 2000/07/12 04:01:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -157,6 +157,7 @@ int list_product(equilibrium_t *e)
     ok = 1;
   }
 
+  prod->n_condensed = prod->n[CONDENSED];
 
   /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     move it to the equilibrium function
@@ -196,7 +197,10 @@ int initialize_product(product_t *p)
   {
     for (i = 0; i < MAX_PRODUCT; i++)
       p->species[j][i] = -1;
-  }  
+  }
+
+  p->n_condensed = 0;
+  p->product_listed = 0;
   return 0;
 }
 
@@ -206,11 +210,9 @@ int initialize_equilibrium(equilibrium_t *e)
 
   /* the composition have not been set */
   e->propellant.ncomp = 0;
-//  global_verbose      = 1;
   
   e->product.isequil        = false;
   e->product.element_listed = 0; /* the element haven't been listed */
-  e->product.product_listed = 0;
   
   /* initialize the product */
   return initialize_product(&(e->product));
@@ -816,7 +818,7 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
     {
       if (global_verbose > 1)
       {
-        fprintf(outputfile, "%s should be remove\n", 
+        fprintf(outputfile, "%s should be remove, negative concentration.\n", 
                 (thermo_list + p->species[CONDENSED][i])->name );
       }
       
@@ -829,21 +831,24 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
       }
       p->species[CONDENSED][ p->n[CONDENSED] - 1 ] = pos;
         
-      p->n[CONDENSED] = p->n[CONDENSED] - 1;
-      (*size)--; /* reduce the size of the matrix */
+      (p->n[CONDENSED])--;
+      
+      //(*size)--; /* reduce the size of the matrix */
       r = 1;
     }
     else if ( !(temperature_check(p->species[CONDENSED][i], pr->T)) )
     {
       /* if the condensed species is present outside of the temperature
-         range at which it could exist, we should replace it by an other
-         phase */
+         range at which it could exist, we should either replace it by
+         an other phase or add the other phase. If the difference between
+         the melting point and the temperature is over 50 k, we replace,
+         else we add the other phase. */
 
       /* Find the new molecule */
       for (j = p->n[CONDENSED]; j < (*n); j++)
       {
         /* if this is the same molecule and temperature_check is true,
-           than replace the molecule */
+           than it is the good molecule */
 
         for (k = 0; k < 5; k++)
         {
@@ -851,25 +856,53 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
                   (thermo_list + p->species[CONDENSED][j])->coef[k] ) &&
                  ((thermo_list + p->species[CONDENSED][i])->elem[k] ==
                   (thermo_list + p->species[CONDENSED][j])->elem[k] ) &&
-                 temperature_check(p->species[CONDENSED][j], pr->T) ))
+                 (p->species[CONDENSED][i] != p->species[CONDENSED][j])));
+          //temperature_check(p->species[CONDENSED][j], pr->T) ))
           {
             ok = 0;
           }
         }
 
-        /* replace the molecule */
+        /* replace or add the molecule */
         if (ok)
         {
-          if (global_verbose > 1)
-          {
-            fprintf(outputfile, "%s should be replace by %s\n",
-                    (thermo_list + p->species[CONDENSED][i])->name,
-                    (thermo_list + p->species[CONDENSED][j])->name);
-          }
 
-          pos = p->species[CONDENSED][i];
-          p->species[CONDENSED][i] = p->species[CONDENSED][j];
-          p->species[CONDENSED][j] = pos;
+          if (fabs(pr->T - transition_temperature(p->species[CONDENSED][j],
+                                                  pr->T)) > 50.0)
+          {
+            /* replace the molecule */
+            if (global_verbose > 1)
+            {
+              fprintf(outputfile, "%s should be replace by %s\n",
+                      (thermo_list + p->species[CONDENSED][i])->name,
+                      (thermo_list + p->species[CONDENSED][j])->name);
+            }
+            
+            pos = p->species[CONDENSED][i];
+            p->species[CONDENSED][i] = p->species[CONDENSED][j];
+            p->species[CONDENSED][j] = pos;
+            
+          }
+          else
+          {
+            /* add the molecule */
+            if (global_verbose > 1)
+            {
+              fprintf(outputfile, "%s should be add with %s\n",
+                      (thermo_list + p->species[CONDENSED][i])->name,
+                      (thermo_list + p->species[CONDENSED][j])->name);
+            }
+
+            /* to include the species, exchange the value */
+            pos = p->species[CONDENSED][ p->n[CONDENSED] ];
+            p->species[CONDENSED][ p->n[CONDENSED] ] = 
+              p->species[CONDENSED][i];
+            p->species[CONDENSED][i] = pos;
+    
+            p->n[CONDENSED]++;
+
+          }
+          
 
           r = 1; /* A species have been replace */
           
@@ -881,6 +914,7 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
       }
     }
   } /* for each condensed */
+
   
   /* 0 if none remove */
   return r;
@@ -923,13 +957,13 @@ int include_condensed(short *size, short *n, equilibrium_t *e,
      we should include it */
   if (!(j == -1))
   {
-    /*
+    
     if (global_verbose > 1)
-    {
+    { 
       fprintf(outputfile, "%s should be include\n", 
               (thermo_list + e->product.species[CONDENSED][j])->name );
-    }
-    */
+    } 
+    
     
     /* to include the species, exchange the value */
     pos = p->species[CONDENSED][ p->n[CONDENSED] ];
@@ -938,7 +972,7 @@ int include_condensed(short *size, short *n, equilibrium_t *e,
     p->species[CONDENSED][j] = pos;
     
     p->n[CONDENSED]++;
-    
+  
     return 1;
   }
   return 0;
@@ -1136,7 +1170,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
 
   
   if (!(equil->product.element_listed))
-/* if the element and the product haven't  been listed */
+    /* if the element and the product haven't  been listed */
   {
     list_element(equil);
   }
@@ -1147,7 +1181,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     {
       return ERROR;
     }
-//    equil->product.n_condensed = equil->product.n[CONDENSED];
+    /* equil->product.n_condensed = equil->product.n[CONDENSED]; */
   }
 
 
@@ -1165,7 +1199,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
      species. */
   if (!(equil->product.isequil))
   {
-    equil->product.n_condensed = equil->product.n[CONDENSED];
+//    equil->product.n_condensed = equil->product.n[CONDENSED];
     equil->product.n[CONDENSED] = 0;
     equil->itn.n = 0.1; /* initial estimate of the mol number */
   }
@@ -1220,7 +1254,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
           for (i = 0; i < equil->product.n[GAS]; i++)
           {
             /* It happen that some species were eliminated in the
-               process even if they should be prsent in the equilibrium.
+               process even if they should be present in the equilibrium.
                In such case, we have to reinsert them */
             if (equil->product.coef[GAS][i] == 0.0)
               equil->product.coef[GAS][i] = 1e-6;
@@ -1228,10 +1262,12 @@ int equilibrium(equilibrium_t *equil, problem_t P)
           gas_reinserted = true;
         }
         else
+        {
           gas_reinserted = false;
-          
+        }
+        
         /* Restart the loop counter to zero for a new loop */
-        k = 0;
+        k = -1;
       }
       else /* There is a solution */
       {
@@ -1259,6 +1295,18 @@ int equilibrium(equilibrium_t *equil, problem_t P)
         //fprintf(outputfile, "T = %f\n", equil->T);
       }
       gas_reinserted = false;
+
+
+      
+      /* print the list of condensed */
+      /*
+      for (i = 0; i < p->n[CONDENSED]; i++)
+      {
+        printf("%d ", p->species[CONDENSED][i]);
+      }
+      printf("\n");
+      */
+      
       
       /* find if a new condensed species should be include or remove */
       if (remove_condensed(&size, &(equil->product.n_condensed), equil) ||
@@ -1293,7 +1341,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
       }
         
       /* reset the loop counter to compute a new equilibrium */
-      k = 0;
+      k = -1;
     }
     else if (global_verbose > 2)
     {

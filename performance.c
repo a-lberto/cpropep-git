@@ -1,6 +1,6 @@
 /* performance.c  -  Compute performance caracteristic of a motor
                      considering equilibrium                      */
-/* $Id: performance.c,v 1.10 2000/07/03 03:19:13 antoine Exp $ */
+/* $Id: performance.c,v 1.11 2000/07/12 04:01:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese  <pinese@cyberwizards.com.au>                        */
@@ -22,6 +22,8 @@
 #include "thermo.h"
 
 #define TEMP_ITERATION_MAX  8
+#define PC_PT_ITERATION_MAX 5
+#define PC_PE_ITERATION_MAX 6
 
 
 double compute_temperature(equilibrium_t *e, double pressure,
@@ -76,6 +78,13 @@ double compute_temperature(equilibrium_t *e, double pressure, double p_entropy)
 
   } while (fabs(delta_lnt) >= 0.5e-4 && i < TEMP_ITERATION_MAX);
 
+  if (i == TEMP_ITERATION_MAX)
+  {
+    fprintf(errorfile,
+       "Temperature do not converge in %d iterations. Don't thrust results.\n",
+            TEMP_ITERATION_MAX);
+  }
+  
   return temperature;
 }
 
@@ -121,9 +130,6 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
   
   /* begin computation of throat caracteristic */
   copy_equilibrium(t, e);
-
-//  t->properties.dV_T =  1.0;
-//  t->properties.dV_P = -1.0;
   
   cp_cv = e->properties.Cp/e->properties.Cv;
 
@@ -156,9 +162,17 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
                            /(1000*(t->properties.Isex + 1)*
                              t->itn.n * R *t->properties.T)));
     i++;
-  } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
-                 /pow(flow_velocity, 2)) > 0.4e-4);
+  } while ((fabs((pow(flow_velocity, 2) - pow(sound_velocity, 2))
+                 /pow(flow_velocity, 2)) > 0.4e-4) &&
+           (i < PC_PT_ITERATION_MAX));
 
+  if (i == PC_PT_ITERATION_MAX)
+  {
+    fprintf(errorfile,
+    "Throat pressure do not converge in %d iterations. Don't thrust results\n",
+            PC_PT_ITERATION_MAX);
+  }
+  
   //printf("%d iterations to evaluate throat pressure.\n", i);
   
   t->properties.P    = e->properties.P/pc_pt;
@@ -251,8 +265,16 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
 
       i++;
       
-    } while (fabs((log_pc_pe - log(pc_pe))) > 0.00004);
+    } while ( (fabs((log_pc_pe - log(pc_pe))) > 0.00004) &&
+              (i < PC_PE_ITERATION_MAX) );
 
+    if (i == PC_PE_ITERATION_MAX)
+    {
+      fprintf(errorfile,
+    "Exit pressure do not converge in %d iterations. Don't thrust results\n",
+              PC_PE_ITERATION_MAX);
+    }
+    
     //printf("%d iterations to evaluate exit pressure.\n", i);
     
     pc_pe            = exp(log_pc_pe);
@@ -276,8 +298,6 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
   ex->performance.a_dotm = 1000 * R * ex->properties.T * ex->itn.n /
     (ex->properties.P * ex->performance.Isp);
 
-  //ex->properties.dV_T =  1.0;
-  //ex->properties.dV_P = -1.0;
   /* Cp of the combustion point assuming frozen */
   ex->properties.Cp   = mixture_specific_heat_0(e, ex->properties.T) * R;
   /* Cv = Cp - nR  (for frozen) */
@@ -325,12 +345,12 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
   double chamber_entropy;
   double exit_pressure = 0;
   
-  equilibrium_t *t  = e + 1; // throat equilibrium
-  equilibrium_t *ex = e + 2; // throat equilibrium
+  equilibrium_t *t  = e + 1; /* throat equilibrium */
+  equilibrium_t *ex = e + 2; /* throat equilibrium */
   
   /* find the equilibrium composition in the chamber */
   if (!(e->product.isequil))
-/* if the equilibrium have not already been compute */
+    /* if the equilibrium have not already been compute */
   {
     if (equilibrium(e, HP))
     {
@@ -352,10 +372,10 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
               t->properties.Isex/(t->properties.Isex - 1) );
 
   t->entropy = chamber_entropy;
-
+    
   i = 0;
   do
-  {
+  { 
     t->properties.P = e->properties.P/pc_pt;
 
     /* We must compute the new equilibrium each time */
@@ -375,8 +395,17 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
                            /(1000*(t->properties.Isex + 1)*t->itn.n*R*
                              t->properties.T)));
     i++;
-  } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
-                 /pow(flow_velocity, 2)) > 0.4e-4);
+  } while ((fabs((pow(flow_velocity, 2) - pow(sound_velocity, 2))
+                 /pow(flow_velocity, 2)) > 0.4e-4) &&
+           (i < PC_PT_ITERATION_MAX));
+
+  if (i == PC_PT_ITERATION_MAX)
+  {
+    fprintf(errorfile,
+   "Throat pressure do not converge in %d iterations. Don't thrust results.\n",
+            PC_PT_ITERATION_MAX);
+  }
+  
   //printf("%d iterations to evaluate throat pressure.\n", i);
 
   t->properties.P    = e->properties.P/pc_pt;
@@ -397,7 +426,8 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
   else
   {
     ae_at = value;
-    
+
+    /* Initial estimate of pressure ratio */
     if (exit_type == SUPERSONIC_AREA_RATIO)
     {
       if ((ae_at > 1.0) && (ae_at < 2.0))
@@ -437,6 +467,7 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
       return ERROR;
     }
 
+    
     /* Improved the estimate */
     ex->entropy      = chamber_entropy;
     i = 0;
@@ -445,6 +476,7 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
       pc_pe            = exp(log_pc_pe);
       ex->properties.P = exit_pressure    = e->properties.P/pc_pe;
 
+      
       /* Find the exit equilibrium */
       if (equilibrium(ex, SP))
       {
@@ -468,8 +500,16 @@ int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
          (pow(flow_velocity, 2) - pow(sound_velocity,2))) *
         (log(ae_at) - log(ex->performance.ae_at));
       i++;
-    } while (fabs((log_pc_pe - log(pc_pe))) > 0.00004);
+    } while ((fabs((log_pc_pe - log(pc_pe))) > 0.00004) &&
+             (i < PC_PE_ITERATION_MAX));
 
+    if (i == PC_PE_ITERATION_MAX)
+    {
+      fprintf(errorfile,
+     "Exit pressure do not converge in %d iteration. Don't thrust results.\n",
+              PC_PE_ITERATION_MAX);
+    }
+    
     //printf("%d iterations to evaluate exit pressure.\n", i);
     
     pc_pe            = exp(log_pc_pe);

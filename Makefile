@@ -1,6 +1,6 @@
 
 CC   = gcc
-COPT = -g -pg -Wall -O3 #-O6\
+COPT = -g -Wall -O3 #-pg -O6\
 # -mpentium -ffast-math -funroll-loops -fnonnull-objects\
 # -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
 # -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer

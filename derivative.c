@@ -1,6 +1,6 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.9 2000/07/03 03:19:13 antoine Exp $ */
+/* $Id: derivative.c,v 1.10 2000/07/12 04:01:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -79,9 +79,9 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
   return cp;
 }
 
-int derivative(equilibrium_t *e)//, deriv_t *d)
+int derivative(equilibrium_t *e)
 {
-  short i, j;
+  short i;
   short size;
   
 #ifdef TRUE_ARRAY
@@ -118,7 +118,7 @@ int derivative(equilibrium_t *e)//, deriv_t *d)
   }
   else
   {
-    if (global_verbose > 1)
+    if (global_verbose > 2)
     {
       fprintf(outputfile, "Temperature derivative results.\n");
       print_vec(sol, size);
@@ -138,7 +138,7 @@ int derivative(equilibrium_t *e)//, deriv_t *d)
   }
   else
   {
-    if (global_verbose > 1)
+    if (global_verbose > 2)
     {
       fprintf(outputfile, "Pressure derivative results.\n");
       print_vec(sol, size);
@@ -297,4 +297,12 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
   
   return 0;
 }
+
+
+
+
+
+
+
+
 

@@ -1,6 +1,6 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.2 2000/07/03 03:19:13 antoine Exp $ */
+/* $Id: thermo.c,v 1.3 2000/07/12 04:01:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -189,6 +189,24 @@ int temperature_check(int sp, float T)
     return 0;
 
   return 1;
+}
+
+/* This function return the transition temperature of the species
+   considered which is nearest of the temperature T */
+double transition_temperature(int sp, float T)
+{
+  thermo_t *s = (thermo_list + sp);
+
+  /* first assume that the lowest temperature is the good one */
+  double transition_T = s->range[0][0];
+
+  /* verify if we did the good bet */
+  if (fabs(transition_T - T) > fabs(s->range[s->nint-1][1] - T))
+  {
+    transition_T = s->range[s->nint-1][1];
+  }
+
+  return transition_T;
 }
 
 double entropy(int sp, state_t st, double ln_nj_n, float T, float P)

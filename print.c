@@ -1,5 +1,5 @@
 /* print.c  -  Output functions           */
-/* $Id: print.c,v 1.9 2000/07/03 03:19:13 antoine Exp $ */
+/* $Id: print.c,v 1.10 2000/07/12 04:01:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -146,9 +146,19 @@ int print_gazeous(product_t p)
 
 int print_product_composition(equilibrium_t *e, short npt)
 {
-  int i, j;//, k;
-  
+  int i, j, k;
+
   double mol_g = e->itn.n;
+
+  /* we have to build a list of all condensed species present
+     in the three equilibrium */
+  int n = 0;
+  int condensed_list[MAX_PRODUCT];
+
+  /* ok become false if the species already exist in the list */
+  int ok = 1;
+
+  double qt;
   
   for (i = 0; i < e->product.n[CONDENSED]; i++)
     mol_g += e->product.coef[CONDENSED][i];
@@ -168,18 +178,60 @@ int print_product_composition(equilibrium_t *e, short npt)
     }
   }
 
+  /* build the list of condensed */
+  for (i = 0; i < npt; i++)
+  {
+    for (j = 0; j < (e+i)->product.n[CONDENSED]; j++)
+    {
+      for (k = 0; k < n; k++)
+      {
+        /* check if the condensed are to be include in the list */
+        if (condensed_list[k] == (e+i)->product.species[CONDENSED][j])
+        {
+          /* we do not have to include the species */
+          ok = 0;
+          break;
+        }
+      } /* k */
 
-  /* check if it is the same condensed for each index */
-  if (e->product.n[CONDENSED] > 0)
+      if (ok)
+      {
+        condensed_list[n] = (e+i)->product.species[CONDENSED][j];
+        n++;
+      }
+      
+      /* reset the flag */
+      ok = 1;
+    } /* j */
+  } /* i */
+
+  
+  if (n > 0)
   {
     fprintf(outputfile, "Condensed species\n");
-    for (i = 0; i < e->product.n[CONDENSED]; i++)
+    for (i = 0; i < n; i++)  
     {
       fprintf(outputfile,   "%-20s",
-              (thermo_list + e->product.species[CONDENSED][i])->name);
+              (thermo_list + condensed_list[i])->name);
 
       for (j = 0; j < npt; j++)
-        fprintf(outputfile, " %11.4e", (e+j)->product.coef[CONDENSED][i]/mol_g);
+      {
+        /* search in the product of each equilibrium if the
+           condensed is present */
+        
+        qt = 0.0;
+        
+        for (k = 0; k < (e+j)->product.n[CONDENSED]; k++)
+        {
+          if (condensed_list[i] == (e+j)->product.species[CONDENSED][k])
+          {
+            qt = (e+j)->product.coef[CONDENSED][k];
+            break;
+          }
+        }
+          
+        fprintf(outputfile, " %11.4e", qt/mol_g);
+      }
       fprintf(outputfile,"\n");
       
     }
@@ -236,7 +288,7 @@ int print_propellant_composition(equilibrium_t *e)
     fprintf(outputfile, "%d possible gazeous species\n", e->product.n[GAS]);
     if (global_verbose > 1)
       print_gazeous(e->product);
-    fprintf(outputfile, "%d possible condensed species\n\n", e->product.n[CONDENSED]);
+    fprintf(outputfile, "%d possible condensed species\n\n", e->product.n_condensed);
     if (global_verbose > 1)
       print_condensed(e->product);
   }

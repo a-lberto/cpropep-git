@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.22 2000/07/11 03:48:57 antoine Exp $ */
+/* $Id: cpropep.c,v 1.23 2000/07/12 04:01:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -23,6 +23,7 @@
 
 #include "print.h"
 
+#include "conversion.h"
 #include "compat.h"
 #include "return.h"
 
@@ -213,18 +214,85 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
 
             if (strcmp(bufptr, "chamber_temperature") == 0)
             {
-              t[n_case].temperature     = atof(qt);
+
+              m = atof(qt);
+              
+              if (strcmp(unit, "k") == 0)
+              {
+                t[n_case].temperature = m;
+              }
+              else if (strcmp(unit, "c") == 0)
+              {
+                t[n_case].temperature = m + 273.15;
+              }
+              else if (strcmp(unit, "f") == 0)
+              {
+                t[n_case].temperature = (5.0/9.0) * (m - 32.0) + 273.15;
+              }
+              else
+              {
+                printf("Unit must be k (kelvin) or c (celcius)\n");
+                break;
+              }
+              
               t[n_case].temperature_set = true;
+
             }
             else if (strcmp(bufptr, "chamber_pressure") == 0)
             {
-              t[n_case].pressure     = atof(qt);
+              m = atof(qt);
+
+              if (strcmp(unit, "atm") == 0)
+              {
+                t[n_case].pressure = m;
+              }
+              else if (strcmp(unit, "kPa") == 0)
+              {
+                t[n_case].pressure = KPA_TO_ATM * m;
+              }
+              else if (strcmp(unit, "psi") == 0)
+              {
+                t[n_case].pressure = PSI_TO_ATM * m;
+              }
+              else if (strcmp(unit, "bar") == 0)
+              {
+                t[n_case].pressure = BAR_TO_ATM * m;
+              }
+              else
+              {
+                fprintf(errorfile, "Units must be psi, kPa, atm or bar.\n");
+                break;
+              }
+              
               t[n_case].pressure_set = true;
             }
             else if (strcmp(bufptr, "exit_pressure") == 0)
             {
+              m = atof(qt);
+
+              if (strcmp(unit, "atm") == 0)
+              {
+                t[n_case].exit_condition = m;
+              }
+              else if (strcmp(unit, "kPa") == 0)
+              {
+                t[n_case].exit_condition = KPA_TO_ATM * m;
+              }
+              else if (strcmp(unit, "psi") == 0)
+              {
+                t[n_case].exit_condition = PSI_TO_ATM * m;
+              }
+              else if (strcmp(unit, "bar") == 0)
+              {
+                t[n_case].exit_condition = BAR_TO_ATM * m;
+              }
+              else
+              {
+                fprintf(errorfile, "Units must be psi, kPa, atm or bar.\n");
+                break;
+              }
+              
               t[n_case].exit_cond_type     = PRESSURE;
-              t[n_case].exit_condition     = atof(qt);
               t[n_case].exit_condition_set = true;
               
             }
@@ -479,7 +547,14 @@ int main(int argc, char *argv[])
     {
       fprintf(outputfile, "Computing case %d\n%s\n\n", i+1,
               case_name[case_list[i].p]);
-      
+
+      /* be sure to begin iteration without considering
+         condensed species. Once n_condensed have been set */
+      //if (equil->product.n_condensed)
+      //{
+        equil->product.n[CONDENSED] = 0;
+        //}
+        
       switch (case_list[i].p)
       {
         case SIMPLE_EQUILIBRIUM:
@@ -536,11 +611,11 @@ int main(int argc, char *argv[])
               printf("Exit condition not set. Aborted.\n");
               break;
             }
-            
-            copy_equilibrium(frozen, equil);
-            
+
             equil->properties.T = case_list[i].temperature;
             equil->properties.P = case_list[i].pressure;
+            
+            copy_equilibrium(frozen, equil);
             
             print_propellant_composition(frozen);
 
@@ -570,10 +645,10 @@ int main(int argc, char *argv[])
               break;
             }
             
-            copy_equilibrium(shifting, equil);
-
             equil->properties.T = case_list[i].temperature;
             equil->properties.P = case_list[i].pressure;
+
+            copy_equilibrium(shifting, equil);
             
             print_propellant_composition(shifting);
             

@@ -143,6 +143,7 @@ AUTHOR: Antoine Lefebvre
 **************************************************************/
 int temperature_check(int sp, float T);
 
+double transition_temperature(int sp, float T);
 
 /*************************************************************
 FUNCTION: Return the variation of enthalpy of the molecule in 
