@@ -1,15 +1,15 @@
 
 CC   = gcc
-COPT = -g -Wall -pg -O6\
- -mpentium -ffast-math -funroll-loops -fnonnull-objects\
- -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
- -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer
+COPT = -g -pg -Wall -O3 #-O6\
+# -mpentium -ffast-math -funroll-loops -fnonnull-objects\
+# -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
+# -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer
 
-LIB  =  -lcpropep -lm -lnum -lcruft -lf2c
+LIB  =  -lcpropep -lm -lnum #-lcruft -lf2c
 LIBDIR = -L../libnum/ -L.
 INCLUDEDIR = -I../libnum/ -I.
 
-DEF = -DGCC -DTRUE_ARRAY -D_GNU
+DEF = -DGCC -DTRUE_ARRAY
 
 LIBNAME = libcpropep.a
 

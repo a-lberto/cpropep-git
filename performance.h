@@ -14,6 +14,9 @@ typedef struct _frozen_state_t
   float temperature;
   float pressure;
   float velocity;
+
+  float aera_dotm; /* aera / mass flow rate */
+  
 } frozen_state_t;
 
 typedef struct _equilibrium_state_t
@@ -22,6 +25,8 @@ typedef struct _equilibrium_state_t
   float   pressure;
   float   velocity;
 
+  float   aera_dotm;
+  
   float   molar_mass;
   deriv_t deriv;
   

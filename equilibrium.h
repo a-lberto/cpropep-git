@@ -2,7 +2,7 @@
 #define equilibrium_h
 
 /* equilibrium.h  -  Calculation of Complex Chemical Equilibrium       */
-/* $Id: equilibrium.h,v 1.13 2000/06/07 04:34:52 antoine Exp $ */
+/* $Id: equilibrium.h,v 1.14 2000/06/14 00:27:50 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                      */
@@ -48,11 +48,10 @@ typedef enum
 
 typedef enum
 {
-  TP,          // assign temperature and pressure
-  HP,          // assign enthalpy and pressure
-  SP           // assign entropy and pressure
+  TP,          /* assign temperature and pressure */
+  HP,          /* assign enthalpy and pressure */
+  SP           /* assign entropy and pressure */
 } problem_t;
-
 
 
 /***************************************************************
@@ -90,7 +89,7 @@ TYPE: Structure to hold information of species contain in the
 ****************************************************************/
 typedef struct _propellant
 {
-  char  name[120];  /* name of the propellant */
+  char  name[120]; /* name of the propellant */
   int   elem[6];   /* element in the molecule (atomic number) max 6 */
   int   coef[6];   /* stochiometric coefficient of this element 
 		                  (0 for none) */
@@ -132,14 +131,11 @@ DATE: February 13, 2000
 ******************************************************************/
 typedef struct _product
 {
-  int    isalloc;              // true if the memory was allocated
-  int    n[STATE_LAST];        // number of species for each state
-  int    (*species)[STATE_LAST]; // list of possible species for each state
-  double (*coef)[STATE_LAST];    // stoechiometric coefficient of each molecule
-
-  int n_condensed; // number of total possible condensed
-  //int    *condensed_ok;        // list containing the condensed species
-                               // that respect the criterium to be present
+  int    isalloc;               /* true if the memory was allocated */
+  int    n[STATE_LAST];         /* number of species for each state */
+  int    (*species)[STATE_LAST];/* list of possible species for each state */
+  double (*coef)[STATE_LAST];   /* stoechiometric coef. of each molecule */
+  int n_condensed;              /* number of total possible condensed */
 } product_t;
 
 
@@ -156,7 +152,7 @@ typedef struct _equilibrium
   unsigned int  verbose;      /* verbose level */
   bool          short_output;
   
-  composition_t c; 
+  composition_t c;  
   product_t     p;
   
   /* list of element in the composition */
@@ -165,7 +161,6 @@ typedef struct _equilibrium
   int   is_listed;  /* is true if the element have been listed */
   
   double entropy;
-  //int is_state_set; /* true if you have set the state */
 
   double T; /* temperature */
   double P; /* pressure */
@@ -173,8 +168,12 @@ typedef struct _equilibrium
     /* not needed */
   bool    isequil;       /* true when the equilibrium have been compute */
 
-  double         n;           /* total number of mole */
+  double         n;           /* total number of mol/kg */
+  double         ln_n;        /* ln(n) */
+  double         sumn;        /* sum of all mol/kg of individual species */
+  
   double         delta_ln_n;
+  double         delta_ln_T;
   double        *delta_ln_nj; /* hold delta ln(nj) for each gazeous species */
   double        *ln_nj;       /* hold ln(nj) for each gazeous species */
 } equilibrium_t;
@@ -336,6 +335,7 @@ double delta_enthalpy(int sp, float T);
 double propellant_enthalpy(equilibrium_t *e);
 double product_enthalpy(equilibrium_t *e);
 double product_entropy(equilibrium_t *e);
+double internal_energy(equilibrium_t *e);
 
 double propellant_mass(equilibrium_t *e);
 

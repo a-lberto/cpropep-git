@@ -1,6 +1,6 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.6 2000/06/07 04:34:52 antoine Exp $ */
+/* $Id: derivative.c,v 1.7 2000/06/14 00:27:50 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -72,7 +72,7 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
 
 int derivative(equilibrium_t *e, deriv_t *d)
 {
-  int i;
+//  int i;
   int size;
 #ifdef TRUE_ARRAY
   double *matrix;
@@ -133,21 +133,23 @@ int derivative(equilibrium_t *e, deriv_t *d)
     
   }
 
-  d->cv = d->cp + e->n*R * pow(d->del_lnV_lnT, 2)/d->del_lnV_lnP;
+  d->cv    = d->cp + e->n*R * pow(d->del_lnV_lnT, 2)/d->del_lnV_lnP;
   d->cp_cv = d->cp/d->cv;
-  d->isex = -d->cp_cv / d->del_lnV_lnP;
-
-  if (e->verbose > 1)
-  {
-    fprintf(outputfile, "\n");
-    fprintf(outputfile, "del ln(V)/del ln(T)  = % f\n", d->del_lnV_lnT);
-    fprintf(outputfile, "del ln(V)/del ln(P)  = % f\n", d->del_lnV_lnP);
-    fprintf(outputfile, "Cp                   = % f\n", d->cp);
-    fprintf(outputfile, "Cv                   = % f\n", d->cv);
-    fprintf(outputfile, "Cp/Cv                = % f\n", d->cp_cv);
-    fprintf(outputfile, "Isentropic exponent  = % f\n", d->isex);
-    fprintf(outputfile, "RT/V                 = % f\n", e->P/e->n);
-  }
+  d->isex  = -d->cp_cv / d->del_lnV_lnP;
+  d->vson  = sqrt(1000 * e->n * R * e->T * d->isex);
+  
+//  if (e->verbose > 1)
+//  {
+//    fprintf(outputfile, "\n");
+//    fprintf(outputfile, "del ln(V)/del ln(T)  = % f\n", d->del_lnV_lnT);
+//    fprintf(outputfile, "del ln(V)/del ln(P)  = % f\n", d->del_lnV_lnP);
+//    fprintf(outputfile, "Cp                   = % f\n", d->cp);
+//    fprintf(outputfile, "Cv                   = % f\n", d->cv);
+//    fprintf(outputfile, "Cp/Cv                = % f\n", d->cp_cv);
+//    fprintf(outputfile, "Isentropic exponent  = % f\n", d->isex);
+//    fprintf(outputfile, "RT/V                 = % f\n", e->P/e->n);
+//  }
+  
 #ifndef TRUE_ARRAY
   for (i = 0; i < size; i++)
     free(matrix[i]);

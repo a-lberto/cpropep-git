@@ -13,6 +13,8 @@ typedef struct deriv
   double cv;
   double cp_cv;
   double isex;        /* isentropic exponent */
+
+  double vson;
   
 } deriv_t;
 

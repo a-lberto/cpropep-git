@@ -1,6 +1,6 @@
 /* performance.c  -  Compute performance caracteristic of a motor
                      considering equilibrium                      */
-/* $Id: performance.c,v 1.7 2000/05/24 02:14:34 antoine Exp $ */
+/* $Id: performance.c,v 1.8 2000/06/14 00:27:50 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese  <pinese@cyberwizards.com.au>                        */
@@ -107,7 +107,7 @@ double velocity_of_flow(equilibrium_t *e, double exit_temperature)
 {
   return sqrt(2000*(product_enthalpy(e)*R*e->T -
                     product_enthalpy_exit(e, exit_temperature)*
-                    R*exit_temperature)/propellant_mass(e));
+                    R*exit_temperature));//  /propellant_mass(e));
 }
 
 int frozen_performance(equilibrium_t *e, performance_t *p,
@@ -158,6 +158,11 @@ int frozen_performance(equilibrium_t *e, performance_t *p,
   p->frozen.exit.velocity    = velocity_of_flow(e, p->frozen.exit.temperature);
   p->frozen.specific_impulse = p->frozen.exit.velocity/g;
 
+  /* aera per unit mass flow rate */
+  p->frozen.exit.aera_dotm   = 1000 * R * p->frozen.exit.temperature * e->n /
+    (p->frozen.exit.pressure * p->frozen.exit.velocity);
+
+  
   
   /* Computing throat condition */
   pc_pt = pow (p->frozen.cp_cv/2 + 0.5,
@@ -168,14 +173,13 @@ int frozen_performance(equilibrium_t *e, performance_t *p,
                                                        chamber_entropy);
     
     sound_velocity = sqrt( 1000 * e->n * R * p->frozen.throat.temperature *
-                           p->frozen.cp_cv/propellant_mass(e));
+                           p->frozen.cp_cv);
     
     flow_velocity = velocity_of_flow(e, p->frozen.throat.temperature);
     
     pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
                            /(1000*(p->frozen.cp_cv + 1)*
-                             e->n*R*p->frozen.throat.temperature
-                             /propellant_mass(e))));
+                             e->n*R*p->frozen.throat.temperature)));
     
   } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
                  /pow(flow_velocity, 2)) > 0.4e-4);
@@ -184,6 +188,12 @@ int frozen_performance(equilibrium_t *e, performance_t *p,
   p->frozen.throat.pressure    = e->P/pc_pt;
   p->frozen.throat.velocity    = sound_velocity;
 
+  /* aera per unit mass flow rate */
+  p->frozen.throat.aera_dotm   = 1000 * R * p->frozen.throat.temperature
+    * e->n /
+    (p->frozen.throat.pressure * p->frozen.throat.velocity);
+
+  
   p->frozen_ok = true;
   
   return SUCCESS;
@@ -267,16 +277,16 @@ int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
     p->equilibrium.throat.temperature = ne->T;
 
     sound_velocity = sqrt (1000*ne->n*R*p->equilibrium.throat.temperature*
-                           d->isex/propellant_mass(ne));
+                           d->isex);///propellant_mass(ne));
     
     flow_velocity = sqrt (2000*(product_enthalpy(e)*R*e->T -
-                                product_enthalpy(ne)*R*ne->T)/
-                          propellant_mass(ne));
+                                product_enthalpy(ne)*R*ne->T)
+                          );///propellant_mass(ne));
 
     pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
                            /(1000*(d->isex + 1)*ne->n*R*
                              p->equilibrium.throat.temperature
-                             /propellant_mass(ne))));
+                             )));///propellant_mass(ne))));
     
   } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
                  /pow(flow_velocity, 2)) > 0.4e-4);
@@ -286,7 +296,12 @@ int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
   p->equilibrium.throat.pressure   = e->P/pc_pt;
   p->equilibrium.throat.velocity   = sound_velocity;
   p->equilibrium.throat.molar_mass = product_molar_mass(ne);
-    
+
+  p->equilibrium.throat.aera_dotm   = 1000 * R *
+    p->equilibrium.throat.temperature
+    * e->n /
+    (p->equilibrium.throat.pressure * p->equilibrium.throat.velocity);
+  
   ne->entropy = chamber_entropy;
   ne->P = exit_pressure;
 
@@ -306,13 +321,18 @@ int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
   p->equilibrium.exit.molar_mass = product_molar_mass(ne);
  
   flow_velocity = sqrt(2000*(product_enthalpy(e)*R*e->T -
-                             product_enthalpy(ne)*R*ne->T)/
-                       propellant_mass(ne));
+                             product_enthalpy(ne)*R*ne->T)
+                       );///propellant_mass(ne));
 
   p->equilibrium.exit.temperature = ne->T;
   p->equilibrium.exit.pressure    = ne->P;
   p->equilibrium.exit.velocity    = flow_velocity;
   p->equilibrium.specific_impulse = flow_velocity/g;
+
+  p->equilibrium.exit.aera_dotm   = 1000 * R *
+    p->equilibrium.exit.temperature
+    * e->n /
+    (p->equilibrium.exit.pressure * p->equilibrium.exit.velocity);
   
   p->equilibrium_ok = true;
 

@@ -15,7 +15,7 @@ Propellant
 #+976   5m       water
 #+578   1m       ch4
 #+258   1g       copper
-#+847   5g       sulphur
+#+847   1g       sulphur
 #+685   90g      oxygen
 #+788   20g      HTPB
 #+771   10g      propane
@@ -24,10 +24,10 @@ Propellant
 #+375   1g       Ferric oxyde
 
 #perform a performance evaluation of the propellant
-#PE  2000  136  1 0 0 0
-HP   3000  100  1 0 0 0
+PE  2000  100  1 0 0 0
+#HP   3000  136  1 0 0 0
 #HP  2000  90 1 0 0 0
 #MHP 20 10 100 0 0 0
-#TP  1000  70   2 0 0 0
+#TP  1951.8  100   2 0 0 0
 #HP  1500  56   2 0 0 0
 #MP  2000 136 0.1 0.1 1

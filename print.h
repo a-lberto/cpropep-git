@@ -3,7 +3,6 @@
 
 #include "equilibrium.h"
 #include "derivative.h"
-
 #include "performance.h"
 
 /***************************************************************

@@ -4,7 +4,7 @@ LIB  =  -lcpropep -lm -lnum -lcgi #-lcruft -lf2c
 LIBDIR = -L../../libnum/ -L../ -L./
 INCLUDEDIR = -I../../libnum/ -I../ -I./
 
-DEF = -DGCC
+DEF = -DGCC -DSOURCEFORGE 
 
 PROG = cgitest
 

@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.18 2000/06/07 04:34:52 antoine Exp $ */
+/* $Id: cpropep.c,v 1.19 2000/06/14 00:27:50 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -19,6 +19,7 @@
 #include "libnum.h"
 
 #include "performance.h"
+#include "derivative.h"
 
 #include "getopt.h"
 
@@ -122,7 +123,7 @@ stdout if ommit\n");
 //int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
 int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
 { 
-  double tmp1, tmp2, m;
+  double m;//tmp1, tmp2;
   
   int sp;
   int section = 0;
@@ -246,7 +247,8 @@ int main(int argc, char *argv[])
 
   /* hold performance informations */
   performance_t performance;
-    
+  deriv_t deriv;
+  
   int thermo_loaded     = 0;
   int propellant_loaded = 0;
 
@@ -258,7 +260,7 @@ int main(int argc, char *argv[])
 
   int param;
   
-  p_type p;
+//  p_type p;
 
   case_t case_list[MAX_CASE];
   for (i = 0; i < MAX_CASE; i++)
@@ -427,7 +429,6 @@ int main(int argc, char *argv[])
     exit_equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
     initialize_equilibrium(exit_equil);
     
-    //load_input(fd, equil, &p, &exit_pressure);
     load_input(fd, equil, case_list, &exit_pressure);
     
     fclose(fd);
@@ -447,7 +448,10 @@ int main(int argc, char *argv[])
             print_propellant_composition(equil);
             TIME(if (equilibrium(equil, TP)) break,
                  CHAMBER_MSG);
+
+            derivative(equil, &deriv);
             print_product_properties(equil);
+            print_derivative_results(&deriv);
             print_product_composition(equil);
             break;
         case FIND_FLAME_TEMPERATURE:
@@ -456,7 +460,9 @@ int main(int argc, char *argv[])
             print_propellant_composition(equil);
             TIME(if (equilibrium(equil, HP)) break,
                  CHAMBER_MSG);
+            derivative(equil, &deriv);
             print_product_properties(equil);
+            print_derivative_results(&deriv);
             print_product_composition(equil);
             break;
         case MULTIPLE_FLAME_TEMPERATURE:
@@ -469,8 +475,10 @@ int main(int argc, char *argv[])
               set_state(equil, 0, param);
 
               equilibrium(equil, HP);
-            
+              derivative(equil, &deriv);
+
               print_product_properties(equil);
+              print_derivative_results(&deriv);
               print_product_composition(equil);
             }
             break;
@@ -483,7 +491,9 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(equil, HP)) break,
                  CHAMBER_MSG);
             printf("--- Chamber equilibrium properties ---\n");
+            derivative(equil, &deriv);
             print_product_properties(equil);
+            print_derivative_results(&deriv);
             print_product_composition(equil);
             TIME(frozen_performance(equil, &performance, exit_pressure),
                  FROZEN_MSG);
@@ -497,7 +507,9 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(equil, HP)) break,
                  CHAMBER_MSG);
             printf("--- Chamber equilibrium properties ---\n");
+            derivative(equil, &deriv);
             print_product_properties(equil);
+            print_derivative_results(&deriv);
             print_product_composition(equil);
             TIME(equilibrium_performance(equil, exit_equil, &performance,
                                          exit_pressure),
@@ -517,7 +529,9 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(equil, HP)) break,
                CHAMBER_MSG);
             printf("--- Chamber equilibrium properties ---\n");
+            derivative(equil, &deriv);
             print_product_properties(equil);
+            print_derivative_results(&deriv);
             print_product_composition(equil);
             TIME(frozen_performance(equil, &performance, exit_pressure),
                  FROZEN_MSG);
@@ -538,7 +552,9 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(equil, HP)) break,
                CHAMBER_MSG);
             printf("--- Chamber equilibrium properties ---\n");
+            derivative(equil, &deriv);
             print_product_properties(equil);
+            print_derivative_results(&deriv);
             print_product_composition(equil);
             for (exit_pressure = case_list[i].arg[2];
                  exit_pressure < case_list[i].arg[4];
