@@ -1,68 +1,83 @@
-/* num.c  -  Library of numerical method                               */
-/* Copyright (C) 2000                                                  */
-/* Antoine Lefebvre <antoine.lefebvre@polymtl.ca                       */
-
-/* This program is free software; you can redistribute it and/or modify*/
-/* it under the terms of the GNU General Public License as published by*/
-/* the Free Software Foundation; either version 2 of the License, or   */
-/* (at your option) any later version.                                 */
-
-/* This program is distributed in the hope that it will be useful,     */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of      */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the       */ 
-/* GNU General Public License for more details.                        */
-
-/* You should have received a copy of the GNU General Public License   */
-/* along with this program; if not, write to the Free Software         */
-/* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.           */
+/* num.h - Library of numerical method
+ * $Id: num.h,v 1.2 2000/10/20 20:17:18 antoine Exp $
+ * Copyright (C) 2000
+ *    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>
+ *
+ * Licensed under the GPL
+ */
 
 #ifndef num_h
 #define num_h
 
+/* NOTE on matrix representation
+ * -----------------------------
+ * All matrix should be allocate the following way
+ *
+ * matrix = (double *) malloc (sizeof(double) * line * column)
+ *
+ * to access the value at line 2, column 4, you do it like that
+ *
+ * matrix[2 + 4*line]
+ */
 
-/**************************************************************
-FUNCTION: This function solve system of linear equation with
-          the LU-Factorisation method as explain in
-	  'Advanced engineering mathematics' bye Erwin Kreyszig.
 
-THEORY:   To solve the system Ax=b , we could decompose A such
-          that A = LU. L is a lower triangular matrix and
-	  U is an upper triangular matrix. We could then solve
-	  the system bye substitution cause Ly=b and Ux=y.
+/* This type is used as function pointer for the
+ * sysnewton algorithm.
+ */
+typedef double (*func_t)(double *x);
 
-PARAMETER: Same as for gauss
+typedef struct status
+{
 
-OUTPUT: 0 on success, -1 on failure
+  int itn;
+  
+} status_t;
 
-COMMENTS: the number of operation is estimate by n^3/3, about
-          half as many as the Gauss elimination. 
-	  Should be interesting to compare the speed in case
-	  of big matrix
+#define NO_CONVERGENCE 1
+#define NO_SOLUTION 2
 
-AUTHOR:  Antoine Lefebvre
 
-DATE: February 6, 2000
-***************************************************************/
-int lu(double *matrix, double *solution, int neq);
+/* Find the solution of linear system of equation using the
+ * LU factorisation method as explain in
+ * 'Advanced engineering mathematics' bye Erwin Kreyszig.
+ *
+ * This algorithm will also do column permutation to find
+ * the larger pivot.
+ *
+ * ARGUMENTS
+ * ---------
+ * matrix: the augmented matrix of coefficient in the system
+ *         with right hand side value.
+ *
+ * solution: the solution vector
+ *
+ * neq: number of equation in the system
+ *
+ * Antoine Lefebvre
+ *    february 6, 2000 Initial version
+ *    october 20, 2000 revision of the permutation method
+ */
+int NUM_lu(double *matrix, double *solution, int neq);
 
-/**************************************************************
-FUNCTION: This function print the coefficient of the matrix to
-          the screen. 
+/* This function print the coefficient of the matrix to
+ * the screen. 
+ *
+ * matrix: should be an augmented matrix
+ * neq   : number of equation
+ */
+int NUM_print_matrix(double *matrix, int neq);
 
-PARAMETER: Same as for gauss
-***************************************************************/
-int print_matrix(double *matrix, int neq);
+/* Print the coefficient of the square matrix to the screen
+ */
+int NUM_print_square_matrix(double *matrix, int neq);
 
-/* same thing but for square matrix instead of (N)x(N-1) */
-int print_square_matrix(double *matrix, int neq);
 
-/**************************************************************
-FUNCTION: This function print the contents of the vector to
-          the screen. 
-
-PARAMETER: Same as for gauss
-***************************************************************/
-int print_vec(double *vec, int neq);
+/* This function print the contents of the vector to
+ * the screen. 
+ *
+ * vec: vector containing neq element
+ */
+int NUM_print_vec(double *vec, int neq);
 
 
 /**************************************************************
@@ -94,11 +109,13 @@ AUTHOR: Antoine Lefebvre
 
 DATE: February 11
 *****************************************************************/
-int rk4( int (*f)(int neq, double time, double *y, double *dy, 
-		  void *data), 
-	 int neq, double step, double duration, double *ic, 
-	 double *y, void *data );
+int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data), 
+            int neq, double step, double duration, double *ic, 
+            double **y, void *data );
 
+int NUM_rkf(int (*f)(int neq, double time, double *y, double *dy, void *data), 
+            int neq, double step, double duration, double *ic, 
+            double **y, double epsil, void *data);
 
 /* this function return the nearest integer to a */
 /* it is a replacement of rint which is not ANSI complient */
@@ -106,13 +123,18 @@ int Round(double a);
 
 double epsilon(void);
 
-double sec(double (*f)(double x), double x0, double x1, int nmax,
-           double epsilon);
+int NUM_sec(double (*f)(double x), double x0, double x1, int nmax,
+            double epsilon, double *ans);
 
-double newton(double (*f)(double x), double (*df)(double x), double x0,
-              int nmax, double epsilon);
+int NUM_newton(double (*f)(double x), double (*df)(double x), double x0,
+               int nmax, double epsilon, double *ans);
 
-double ptfix(double (*f)(double x), double x0, double nmax, double epsilon);
+int NUM_ptfix(double (*f)(double x), double x0,
+              double nmax, double epsilon, double *ans);
+
+int NUM_sysnewton(func_t *Jac, func_t *R, double *x, int nvar,
+                  int nmax, double eps);
+
 
 #endif
 

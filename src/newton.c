@@ -1,8 +1,10 @@
 #include <math.h>
 #include <stdio.h>
 
-double NUM_newton(double (*f)(double x), double (*df)(double x), double x0,
-                  int nmax, double epsilon)
+#include "num.h"
+
+int NUM_newton(double (*f)(double x), double (*df)(double x), double x0,
+               int nmax, double eps, double *ans)
 {
 
   int i = 0;
@@ -13,8 +15,7 @@ double NUM_newton(double (*f)(double x), double (*df)(double x), double x0,
   {
     if (i >= nmax)
     {
-      printf("No convergence within %d iterations.\n", i);
-      return 0;
+      return NO_CONVERGENCE;
     }
     
     x1 = x0 - f(x0)/df(x0);
@@ -23,7 +24,8 @@ double NUM_newton(double (*f)(double x), double (*df)(double x), double x0,
     x0 = x1;
     i++;
  
-  }  while (delta > epsilon);
-  printf("Number of iteration: %d\n", i);
-  return x1;
+  }  while (delta > eps);
+
+  *ans = x1;
+  return 0;
 }

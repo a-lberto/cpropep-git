@@ -1,11 +1,13 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "num.h"
+
 /* Resolution of non-linear equation of the for
    f(x) = 0 with the secante method which is a modified
    newton method using secante instead of derivative */
-double NUM_sec(double (*f)(double x), double x0, double x1, int nmax,
-               double epsilon)
+int NUM_sec(double (*f)(double x), double x0, double x1, int nmax,
+            double epsilon, double *ans)
 {
   int i = 0;
   double x2;
@@ -15,8 +17,7 @@ double NUM_sec(double (*f)(double x), double x0, double x1, int nmax,
   {
     if (i >= nmax)
     {
-      printf("No convergence within %d iterations.\n", i);
-      return 0;
+      return NO_CONVERGENCE;
     }
     
     x2 = x1 - f(x1)*(x1 - x0)/(f(x1) - f(x0));
@@ -26,7 +27,7 @@ double NUM_sec(double (*f)(double x), double x0, double x1, int nmax,
     x1 = x2;
     i++;
   } while (delta > epsilon);
-  printf("Number of iteration: %d\n", i);
-  return x2;
 
+  *ans = x2;
+  return 0;
 }

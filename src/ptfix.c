@@ -1,8 +1,10 @@
-
 #include <math.h>
 #include <stdio.h>
 
-double NUM_ptfix(double (*f)(double x), double x0, double nmax, double epsilon)
+#include "num.h"
+
+int NUM_ptfix(double (*f)(double x), double x0, double nmax,
+              double epsilon, double *ans)
 {
   
   int i = 0;
@@ -13,8 +15,7 @@ double NUM_ptfix(double (*f)(double x), double x0, double nmax, double epsilon)
   {
     if (i >= nmax)
     {
-      printf("No convergence within %d iterations.\n", i);
-      return 0;
+      return NO_CONVERGENCE;
     }
     
     x1 = f(x0);
@@ -24,6 +25,7 @@ double NUM_ptfix(double (*f)(double x), double x0, double nmax, double epsilon)
     i++;
 
   } while (delta > epsilon);
-  printf("Number of iteration: %d\n", i);
-  return x1;
+
+  *ans = x1;
+  return 0;
 }

@@ -1,77 +1,115 @@
+/* lu.c  -  PA = LU factorisation with pivoting
+ * $Id: lu.c,v 1.3 2000/10/20 20:17:20 antoine Exp $
+ * Copyright (C) 2000
+ *    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>
+ *
+ *
+ * Licensed under the GPLv2
+ */
+   
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include "num.h"
 
-/* LU-Factorisation, Doolittle's method */
+/*
+  
+   This algorithm will compute an LU factorisation on the augmented
+   matrix (A) passed in arguments.
+
+   This algorithm assumed the element on the diagonal of the lower
+   triangular matrix set to 1.
+  
+   In order to save memory space, every coefficient of both matrix
+   L and U are written in the original matrix overwriting initial
+   values of A. 
+
+*/
+
 int NUM_lu(double *matrix, double *solution, int neq)
 {
-  int i, j, s;
+  int i, j, k;
+  
+  int    idx;   /* index of the larger pivot */
+  double big;       /* the larger pivot found */
   double tmp = 0.0;
   
-  /* L is a lower triangular matrix with diagonal set to one */
-  double *L;
-  /* U is an upper triangular matrix */
-  double *U;  
-  /* temporary vector Ly = b, Ux = y */
+  int    *P;        /* keep memory of permutation (column permutation) */
   double *y;
-  
+    
+  P = (int *) calloc (neq, sizeof(int));
   y = (double *) calloc (neq, sizeof(double));
-  L = (double *) calloc (neq*neq, sizeof(double));
-  U = (double *) calloc (neq*neq, sizeof(double));
-  
+
   for (i = 0; i < neq; i++)
   {
     solution[i]  = 0; /* reset the solution vector */
-    L[i + neq*i] = 1;
+    P[i] = i;         /* initialize permutation vector */
   }
     
   /* LU Factorisation */
-  for (i = 0; i < neq; i++)
-  {
-    U[0 + neq*i] = matrix[0 + neq*i];
-    
-    if (i > 0)
+
+  for (i = 0; i < neq - 1; i++) /* line */
+  {    
+    for (j = i; j < neq; j++) /* column */
+    {  
+      tmp = 0.0;
+      for (k = 0; k < i; k++)
+        tmp += matrix[i + neq*P[k]] * matrix[k + neq*P[j]];
+
+      matrix[i + neq*P[j]] = matrix[i + neq*P[j]] - tmp; 
+    }
+
+    /* find the larger pivot and interchange the columns */
+    big = 0.0;
+    idx = i;
+    for (j = i; j < neq; j++)
     {
-      for (j = 1; j <= i; j++)
+      if (big < matrix[i + neq*P[j]]) /* we found a larger pivot */
       {
-        tmp = 0.0;
-        for (s = 0; s < j; s++)
-          tmp += L[j + neq*s] * U[s + neq*i];
-        
-        U[j + neq*i] = matrix[j + neq*i] - tmp;
+        idx = j;
+        big = matrix[i + neq*P[j]];
       }
     }
-    
-    for (j = i + 1; j < neq; j++)
+    /* check if we have to interchange the lines */
+    if (idx != i)
     {
-      if (U[i + neq*i] == 0.0)
-      {
-        printf("LIBNUM: No unique solution exist.\n");
-        return -1;
-      }
-      if (i == 0)
-      {
-        L[j + neq*i] = matrix[j + neq*i]/U[i + neq*i];      
-      }
-      else
-      {
-        tmp = 0.0;
-        for (s = 0; s < i; s++)
-          tmp += L[j + neq*s]*U[s + neq*i];
-        
-        L[j + neq*i] = (matrix[j + neq*i] - tmp)/U[i + neq*i];    
-      }
+      tmp    = P[i];
+      P[i]   = P[idx];
+      P[idx] = tmp;
+    }
+
+    if (matrix[i + neq*P[i]] == 0)
+    {
+      printf("LU: matrix is singular, no unique solution.\n");
+      return NO_SOLUTION;
+    }
+    
+    for (j = i+1; j < neq; j++)
+    {
+      tmp = 0.0;
+      for (k = 0; k < i; k++)
+        tmp += matrix[j + neq*P[k]] * matrix[k + neq*P[i]];
+
+      matrix[j + neq*P[i]] = (matrix[j + neq*P[i]] - tmp)/matrix[i + neq*P[i]];
     }
   }
+
+  i = neq - 1;  
+  tmp = 0.0;
+  for (k = 0; k < neq-1; k++)
+    tmp += matrix[i + neq*P[k]] * matrix[k + neq*P[i]];
+
+  matrix[i + neq*P[i]] = matrix[i + neq*P[i]] - tmp;
+
   /* End LU-Factorisation */
+
   
   /* substitution  for y    Ly = b*/
   for (i = 0; i < neq; i++)
   {
     tmp = 0.0;
     for (j = 0; j < i; j++)
-      tmp += L[i + neq*j]*y[j];
+      tmp += matrix[i + neq*P[j]] * y[j];
     
     y[i] = matrix[i + neq*neq] - tmp;
   }
@@ -79,32 +117,20 @@ int NUM_lu(double *matrix, double *solution, int neq)
   /* substitution for x   Ux = y*/
   for (i = neq - 1; i >=0; i--)
   {
-    if (U[i + neq*i] == 0.0)
+    if (matrix[i + neq*P[i]] == 0.0)
     {
-      printf("LIBNUM: No unique solution exist.\n");
-      return -1;
+      printf("LU: No unique solution exist.\n");
+      return NO_SOLUTION;
     }
     
     tmp = 0.0;
     for (j = i; j < neq; j++)
-      tmp += U[i + neq*j]*solution[j];
+      tmp += matrix[i + neq*P[j]] * solution[P[j]];
     
-    solution[i] = (y[i] - tmp)/U[i + neq*i];
-
-    /* isnan() is probably not available under Windows */
-#ifdef LINUX
-    if ( isnan(solution[i]) )
-    {
-      printf("LIBNUM: No unique solution exist. NaN in solution.\n");
-      return -1;
-    }
-#endif
-    
+    solution[P[i]] = (y[i] - tmp)/matrix[i + neq*P[i]];    
   }
      
   free (y);
-  free (L);
-  free (U);
   return 0;      
 }
 
@@ -132,12 +158,14 @@ int NUM_matscale(double *matrix, int neq)
     }
 
     /* divide element of the line by this value
-     * including the right side  */
-    if (val == 0)
-      return -1;
-    
-    for (j = 0; j < neq+1; j++)
+     * including the right side
+     * if the max value is defferent than zero
+     */
+    if (val != 0.0)
+    {
+      for (j = 0; j < neq+1; j++)
       matrix[i + neq*j] = matrix[i + neq*j]/val;
+    }
   }
   return 0;
 

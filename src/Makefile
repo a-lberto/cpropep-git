@@ -11,7 +11,9 @@ DEF = -DLINUX
 PROG = test
 OBJS = test.o
 
-LIBOBJS = lu.o rk4.o rkf.o general.o print.o sec.o newton.o ptfix.o
+LIBOBJS = lu.o rk4.o rkf.o general.o print.o sec.o newton.o ptfix.o\
+          sysnewton.o
+
 LIBNUM = libnum.a
 
 .SUFFIXES: .c
