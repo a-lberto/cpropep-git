@@ -1,41 +1,32 @@
-/* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
+/* equilibrium.c  -  Responsible of the chemical equilibrium          */
+/* $Id: equilibrium.c,v 1.11 2000/05/10 01:36:00 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
-/* Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                      */
-/* Contribution of                                                     */
-/* Mark Pinese <ida.pinese@bushnet.qld.edu.au>                         */
+/*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
+/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*                                                                     */
+/* Licensed under the GPLv2                                            */
 
-/* This program is free software; you can redistribute it and/or modify*/
-/* it under the terms of the GNU General Public License as published by*/
-/* the Free Software Foundation; either version 2 of the License, or   */
-/* (at your option) any later version.                                 */
-
-/* This program is distributed in the hope that it will be useful,     */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of      */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the       */ 
-/* GNU General Public License for more details.                        */
-
-/* You should have received a copy of the GNU General Public License   */
-/* along with this program; if not, write to the Free Software         */
-/* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.           */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <malloc.h>
-/* #include <time.h> */
+#include <ctype.h>
+
+//#include <malloc.h>
+#include <time.h>
 
 #include "print.h"
 #include "equilibrium.h"
 #include "load.h"
 #include "libnum.h"
-//#include "type.h"
 
 #include "compat.h"
 #include "return.h"
 
 /* Initial temperature estimate for problem with not-fixed temperature */
 #define ESTIMATED_T 3000
+
 #define MAX_PRODUCT 400
 #define MAX_ELEMENT 109
 
@@ -52,6 +43,9 @@ int iteration_max = 400;
 int global_verbose = 0;
 
 int global_error = 0;
+
+FILE * errorfile;
+FILE * outputfile;
 
 /****************************************************************
 VARIABLE: Contain the molar mass of element by atomic number
@@ -109,7 +103,7 @@ double enthalpy_0(int sp, float T)
   thermo_t *s = (thermo_list + sp);
 
   double val;
-  int    pos, i;
+  int    pos = 0, i;
   
   if (T < s->range[0][0]) /* Temperature below the lower range */
   {
@@ -142,7 +136,7 @@ double entropy_0(int sp, float T)
 {
   thermo_t *s = (thermo_list + sp);
   double val;
-  int    pos, i;
+  int    pos = 0, i;
 
   if (T < s->range[0][0])
   {
@@ -176,7 +170,7 @@ double specific_heat_0(int sp, float T)
 {
   thermo_t *s = (thermo_list + sp);
   double val;
-  int    pos, i;
+  int    pos = 0, i;
 
   if (T < s->range[0][0])
   {
@@ -378,6 +372,152 @@ int propellant_search(char *str)
   
 }
 
+int atomic_number(char *symbole)
+{
+  int i;
+  int element = -1;
+  
+  /* find the atomic number of the element */
+  for (i = 0; i < N_SYMB; i++)
+  {
+    if (!strcmp(symbole, symb[i]))
+    {
+      element = i;
+      break;
+    }
+  }
+  return element;
+}
+
+
+/* This fonction return the offset of the molecule in the propellant_list
+   the argument is the chemical formula of the molecule */
+int propellant_search_by_formula(char *str)
+{
+  int i = 0, j ;
+  
+  char  tmp[5];
+  char *ptr;
+  
+  int   elem[6] = {0, 0, 0, 0, 0,1};   
+  int   coef[6] = {0, 0, 0, 0, 0,0}; 
+
+  int molecule = -1;
+  
+  ptr = str; /* beginning of the string */
+
+  while ( (i < 6) && ((ptr - str) < strlen(str)) )
+  {    
+    if (isupper(*ptr) && islower(*(ptr+1)) && (isupper(*(ptr+2)) ||
+                                               iscntrl(*(ptr+2))) )
+    {
+      tmp[0] = *ptr;
+      tmp[1] = toupper(*(ptr+1));
+      tmp[2] = '\0';
+      /* find the atomic number of the element */
+      elem[i] = atomic_number(tmp);
+      coef[i] = 1;
+      i++;   
+      ptr += 2;
+    }
+    else if (isupper(*ptr) && (isupper(*(ptr+1)) ||
+                               iscntrl(*(ptr+1))) )
+    {
+      tmp[0] = *ptr;
+      tmp[1] = ' ';
+      tmp[2] = '\0';
+      elem[i] = atomic_number(tmp);
+      coef[i] = 1;
+      i++;
+      ptr++;
+    }
+    else if (isupper(*ptr) && isdigit(*(ptr+1)))
+    {
+      tmp[0] = *ptr;
+      tmp[1] = ' ';
+      tmp[2] = '\0';
+      elem[i] = atomic_number(tmp);
+      
+      j = 0;
+      do
+      {
+        tmp[j] = *(ptr + 1 + j);
+        j++;
+      } while (isdigit(*(ptr + 1 + j)));
+
+      tmp[j] = '\0';
+      
+      coef[i] = atoi(tmp);
+      i++;
+      
+      ptr = ptr + j + 1;
+    }
+    else if (isupper(*ptr) && islower(*(ptr+1)) && isdigit(*(ptr+2)))
+    {
+      tmp[0] = *ptr;
+      tmp[1] = toupper(*(ptr+1));
+      tmp[2] = '\0';
+      elem[i] = atomic_number(tmp);
+      
+      j = 0;
+      while (isdigit(*(ptr + 2 + j)))
+      {
+        tmp[j] = *(ptr + 1 + j);
+        j++;
+      }
+      tmp[j] = '\0';
+      
+      coef[i] = atoi(tmp);
+      i++;
+      
+      ptr = ptr + j + 2;
+    }
+  }
+
+  /*
+  for (i = 0; i < 6; i++)
+  {
+    if (elem[i] != -1)
+      printf("%s %d\n", symb[elem[i]], coef[i]);
+  }
+  */
+
+  for (i = 0; i < num_propellant; i++)
+  {
+    for (j = 0; j < 6; j++)
+    {
+      /* set to the same value as the previous one if the same */
+      if (!( ((propellant_list+i)->coef[j] == coef[j]) &&
+             ((propellant_list+i)->elem[j] == elem[j]) ))
+        break;
+    }
+    
+  
+  /* Now search in propellant list for this molecule */
+/*
+  for (j = 0; j < num_propellant; j++)
+  {
+    for (i = 0; i < 6; i++)
+    {
+      if ( (coef[i] != propellant_element_coef(elem[i], j)) &&
+           (propellant_list + i)
+        break;
+    }
+*/  
+
+    if (j == 5) /* we found the molecule ! */
+    {
+
+      /* check if the inverse is true */
+      molecule = i;
+      break;
+    }
+  }
+  
+  return molecule;
+}
+
+
 double product_molar_mass(equilibrium_t *e)
 {
   int i;
@@ -437,11 +577,11 @@ int list_element(equilibrium_t *e)
 
   if (e->verbose > 0)
   {
-    printf("%d different elements in the propellant\n", n);
+    fprintf(outputfile, "%d different elements in the propellant\n", n);
     /* Print those elements */
     for (i = 0; i < n; i++)
-      printf("%s ", symb[e->element[i]] );
-    printf("\n");
+      fprintf(outputfile, "%s ", symb[e->element[i]] );
+    fprintf(outputfile, "\n");
   }
 
   e->is_listed = 1;
@@ -458,7 +598,7 @@ int list_product(equilibrium_t *e)
   int ok = 1;
 
   /* reset the product to zero */
-  e->p.n[GAS] = 0;
+  e->p.n[GAS]       = 0;
   e->p.n[CONDENSED] = 0;
   
   for (j = 0; j < num_thermo; j++)
@@ -495,10 +635,11 @@ int list_product(equilibrium_t *e)
 
         if ((e->p.n[GAS] > num_thermo) || (e->p.n[CONDENSED] > MAX_PRODUCT))
         {
-          printf("Error: Maximum of %d differents product reach.\n",
-                 MAX_PRODUCT);
-          printf("       Change MAX_PRODUCT and recompile!\n");
-          return -1;
+          fprintf(errorfile,
+                  "Error: Maximum of %d differents product reach.\n",
+                  MAX_PRODUCT);
+          fprintf(errorfile, "       Change MAX_PRODUCT and recompile!\n");
+          return ERROR;
         }
         
       }    
@@ -516,11 +657,11 @@ int list_product(equilibrium_t *e)
 
   if (e->verbose > 0)
   {
-    printf("%d possible combustion product\n", n);
-    printf("%d gazeous species\n", e->p.n[GAS]);
+    fprintf(outputfile, "%d possible combustion product\n", n);
+    fprintf(outputfile, "%d gazeous species\n", e->p.n[GAS]);
     if (e->verbose > 1)
       print_gazeous(e->p);
-    printf("%d condensed species\n", e->p.n[CONDENSED]);
+    fprintf(outputfile, "%d condensed species\n", e->p.n[CONDENSED]);
     if (e->verbose > 1)
       print_condensed(e->p);
   }
@@ -582,14 +723,74 @@ int initialize_equilibrium(equilibrium_t *e)
   e->c.ncomp = 0;
   
   e->verbose = 1;
-  e->isequil = 0;
+  e->isequil = false;
   e->is_listed = 0; /* the element haven't been listed */
-
-  e->isequil = 0;   /* no equilibrium yet */
   
   /* initialize the product */
   return initialize_product(&(e->p));
 
+}
+
+int copy_equilibrium(equilibrium_t *dest, equilibrium_t *src)
+{
+//  int i, j;  
+
+  dest->verbose    = src->verbose;
+  dest->n_element  = src->n_element;
+  dest->is_listed  = src->is_listed;
+  dest->T          = src->T;
+  dest->P          = src->P;
+  dest->isequil    = src->isequil;
+  dest->n          = src->n;
+  dest->delta_ln_n = src->delta_ln_n;
+
+  /*
+  for (i = 0; i < MAX_PRODUCT; i++)
+    dest->delta_ln_nj[i] = src->delta_ln_nj[i];
+  */
+  
+  memcpy(dest->delta_ln_nj, src->delta_ln_nj, MAX_PRODUCT*sizeof(double));
+  
+  /*
+  for (i = 0; i < MAX_ELEMENT; i++)
+    dest->element[i] = src->element[i];
+  */
+  memcpy(dest->element, src->element, MAX_ELEMENT*sizeof(int));
+    
+  dest->c.ncomp = src->c.ncomp;
+
+  /*
+  for (i = 0; i < MAX_COMP; i++)
+  {
+    dest->c.molecule[i] = src->c.molecule[i];
+    dest->c.coef[i]     = src->c.coef[i];
+  }
+  */
+  
+  memcpy(dest->c.molecule, src->c.molecule, MAX_COMP*sizeof(int));
+  memcpy(dest->c.coef,     src->c.coef,     MAX_COMP*sizeof(double));
+
+  
+  dest->p.isalloc     = src->p.isalloc;
+  dest->p.n_condensed = src->p.n_condensed;
+
+  /*
+  for (i = 0; i < STATE_LAST; i++)
+  {
+    dest->p.n[i] = src->p.n[i];
+    for (j = 0; j < MAX_PRODUCT; j++)
+    {
+      dest->p.species[j][i] = src->p.species[j][i];
+      dest->p.coef[j][i]    = src->p.coef[j][i]; 
+    }
+  }
+  */
+  
+  memcpy(dest->p.n,       src->p.n,       STATE_LAST*sizeof(int));
+  memcpy(dest->p.species, src->p.species, STATE_LAST*MAX_PRODUCT*sizeof(int));
+  memcpy(dest->p.coef,  src->p.coef,    STATE_LAST*MAX_PRODUCT*sizeof(double));
+  
+  return 0;
 }
 
 int reset_element_list(equilibrium_t *e)
@@ -600,7 +801,7 @@ int reset_element_list(equilibrium_t *e)
   return 0;
 }
 
-int dealloc_equillibrium(equilibrium_t *e)
+int dealloc_equilibrium(equilibrium_t *e)
 {
   dealloc_product (&(e->p));
   free (e->delta_ln_nj);
@@ -610,8 +811,6 @@ int dealloc_equillibrium(equilibrium_t *e)
 
 int dealloc_product(product_t *p)
 {
-  int i;
-
   if (!p->isalloc)
 		return ERR_NOT_ALLOC;
   
@@ -642,7 +841,7 @@ double propellant_mass(equilibrium_t *e)
   double mass = 0.0;
   for (i = 0; i < e->c.ncomp; i++)
   {
-    mass += e->c.coef[i]*propellant_molar_mass(e->c.molecule[i]);
+    mass += e->c.coef[i] * propellant_molar_mass(e->c.molecule[i]);
   }
   return mass;
 }
@@ -776,7 +975,6 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     
     matrix[j][ e->n_element + e->p.n[CONDENSED] + roff ] = tmp;  
   }
-
 
   /* delta ln(T) */
   if (P != TP)
@@ -1040,16 +1238,13 @@ int remove_condensed(int *size, int *n, equilibrium_t *e)
   for (i = 0; i < e->p.n[CONDENSED]; i++)
   {
 
-    /* The temperature check should be change, we could not remove a condensed
-       for a temperature out of range, we should replace it by the other phase
-    */
-    if (e->p.coef[i][CONDENSED] <= 0.0)// ||
-      //!(temperature_check(e->p.species[i][CONDENSED], e->T)) )
+    /* if a condensed have negative coefficient, we should remove it */
+    if (e->p.coef[i][CONDENSED] <= 0.0)
     {
       if (e->verbose > 1)
       {
-        printf("%s should be remove\n", 
-               (thermo_list + e->p.species[i][CONDENSED])->name );
+        fprintf(outputfile, "%s should be remove\n", 
+                (thermo_list + e->p.species[i][CONDENSED])->name );
       }
       /* remove from the list ( put it at the end for later use )*/
       pos = e->p.species[i][CONDENSED];
@@ -1061,14 +1256,15 @@ int remove_condensed(int *size, int *n, equilibrium_t *e)
       }
       e->p.species[ e->p.n[CONDENSED] - 1 ][CONDENSED] = pos;
         
-      //(*n)--;
       e->p.n[CONDENSED] = e->p.n[CONDENSED] - 1;
-      (*size)--;
+      (*size)--; /* reduce the size of the matrix */
       r = 1;
     }
     else if ( !(temperature_check(e->p.species[i][CONDENSED], e->T)) )
     {
-      /* Replace by the other phase */
+      /* if the condensed species is present outside of the temperature
+         range at which it could exist, we should replace it by an other
+         phase */
 
       /* Find the new molecule */
       for (j = e->p.n[CONDENSED]; j < (*n); j++)
@@ -1093,9 +1289,9 @@ int remove_condensed(int *size, int *n, equilibrium_t *e)
         {
           if (e->verbose > 1)
           {
-            printf("%s should be replace by %s\n",
-                   (thermo_list + e->p.species[i][CONDENSED])->name,
-                   (thermo_list + e->p.species[j][CONDENSED])->name);
+            fprintf(outputfile, "%s should be replace by %s\n",
+                    (thermo_list + e->p.species[i][CONDENSED])->name,
+                    (thermo_list + e->p.species[j][CONDENSED])->name);
           }
 
           pos = e->p.species[i][CONDENSED];
@@ -1103,14 +1299,16 @@ int remove_condensed(int *size, int *n, equilibrium_t *e)
           e->p.species[j][CONDENSED] = pos;
 
           r = 1; /* A species have been replace */
+          
+          /* we do not need to continue searching so we break */
+          break;
         }
 
         ok = 1;
       }
-      
-      /* should replace it */
     }
-  }
+  } /* for each condensed */
+  
   /* 0 if none remove */
   return r;
 }
@@ -1151,8 +1349,8 @@ int include_condensed(int *size, int *n, equilibrium_t *e,
   {
     if (e->verbose > 1)
     {
-      printf("%s should be include\n", 
-             (thermo_list + e->p.species[j][CONDENSED])->name );
+      fprintf(outputfile, "%s should be include\n", 
+              (thermo_list + e->p.species[j][CONDENSED])->name );
     }
     /* to include the species, exchange the value */
     pos = e->p.species[ e->p.n[CONDENSED] ][CONDENSED];
@@ -1177,7 +1375,6 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
   double lambda1, lambda2, lambda;
 
   double temp;
-
     
   /* compute the values of delta ln(nj) */
   e->delta_ln_n = sol[ e->n_element + e->p.n[CONDENSED] ];
@@ -1195,8 +1392,7 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
         
     /* if the substance is exclude of the mixture */
     if ((e->delta_ln_nj[i] < 0) && (e->p.coef[i][GAS] == 0))
-      e->delta_ln_nj[i] = 0;
-        
+      e->delta_ln_nj[i] = 0;      
   }
   
   /* compute the control factor lambda */
@@ -1225,7 +1421,7 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
   /* compute the new value for nj (gazeous) */
       
   if (e->verbose > 2)
-    printf(" \t  nj/n \t\t  Delta ln(nj)\n");
+    fprintf(outputfile, " \t  nj/n \t\t  Delta ln(nj)\n");
       
   for (i = 0; i < e->p.n[GAS]; i++)
   {
@@ -1238,10 +1434,10 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
         
     if (e->verbose > 2)
       if (!(e->p.coef[i][GAS] == 0))
-        printf("%s \t % .4e \t % .4e\n", 
-               (thermo_list + e->p.species[i][GAS])->name, 
-               e->p.coef[i][GAS]/e->n,
-               e->delta_ln_nj[i]);
+        fprintf(outputfile, "%s \t % .4e \t % .4e\n", 
+                (thermo_list + e->p.species[i][GAS])->name, 
+                e->p.coef[i][GAS]/e->n,
+                e->delta_ln_nj[i]);
   }
   
   
@@ -1253,9 +1449,9 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
         
     /* molar of condensed species */
     if (e->verbose > 2)
-      printf("%s: \t %f\n", 
-             (thermo_list + e->p.species[i][CONDENSED])->name, 
-             e->p.coef[i][CONDENSED]);
+      fprintf(outputfile, "%s: \t %f\n", 
+              (thermo_list + e->p.species[i][CONDENSED])->name, 
+              e->p.coef[i][CONDENSED]);
   }
   
   /* new value of T */
@@ -1264,10 +1460,10 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
                                       e->p.n[CONDENSED] + 1]);
       
   if (e->verbose > 2)
-    printf("Temperature: %f\n", e->T);
+    fprintf(outputfile, "Temperature: %f\n", e->T);
       
   /* new value of n */
-  e->n = exp( log(e->n) + lambda*e->delta_ln_n );
+  e->n = exp (log(e->n) + lambda*e->delta_ln_n);
   
   return SUCCESS;
 }
@@ -1283,7 +1479,7 @@ bool convergence(equilibrium_t *e, double *sol)
     mol += e->p.coef[i][GAS];
       
       
-  // check for convergence 
+  /* check for convergence */ 
   for (i = 0; i < e->p.n[GAS]; i++)
   {
     if (!(e->p.coef[i][GAS]*fabs(e->delta_ln_nj[i])/mol <= conv_tol))
@@ -1304,8 +1500,8 @@ bool convergence(equilibrium_t *e, double *sol)
 }
 
 int equilibrium(equilibrium_t *equil, problem_t P)
-{
-
+{ 
+  int       i, k;
   int       size;     /* size of the matrix */
   double ** matrix;  
   double  * sol;
@@ -1314,12 +1510,11 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   bool      stop           = false;
   bool      gas_reinserted = false;
   bool      solution_ok    = false;
-
-  int i, k;
   
-  /* position of the right side dependeing on the type of problem */
+  /* position of the right side of the matrix dependeing on the
+     type of problem */
   int roff = 2;
-  
+
   if (P == TP)
     roff = 1;
 
@@ -1328,12 +1523,12 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     equil->T = ESTIMATED_T;
 
   
-  /* Could cause the problem...*/
-  if (!(equil->is_listed))
+  if (!(equil->is_listed)) /* if the element and the product haven't
+                              been listed */
   {
     list_element(equil);
 
-    if (list_product(equil) == -1)
+    if (list_product(equil) == ERROR)
     {
       return ERROR;
     }
@@ -1345,7 +1540,8 @@ int equilibrium(equilibrium_t *equil, problem_t P)
      to accelerate the convergence */
   /* initial_estimate(equil); */
   
-  /* initially, we do not consider the condensed */
+  /* For the first equilibrium, we do not consider the condensed
+     species. */
   if (!(equil->isequil))
   {
     equil->p.n[CONDENSED] = 0;
@@ -1366,37 +1562,39 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   /* main loop */
   for (k = 0; k < iteration_max; k++)
   {
-    
+
     /* Initially we haven't a good solution */
     solution_ok = false;
 
     while (!solution_ok)
-    {
-     
+    {      
       fill_equilibrium_matrix(matrix, equil, P);
       
       if (equil->verbose > 2)
         print_matrix(matrix, size);
     
-      if ( lu(matrix, sol, size) == -1)
+      if ( lu(matrix, sol, size) == -1) /* solve the matrix */
       {
         /* the matrix have no unique solution */
-        printf("The matrix is singular, removing excess condensed.\n");
+        fprintf(outputfile,
+                "The matrix is singular, removing excess condensed.\n");
           
         /* Try removing excess condensed */
         if (!remove_condensed(&size, &(equil->p.n_condensed), equil))
         {
           if (gas_reinserted)
           {
-            printf("No convergence, don't trust results\n");
+            fprintf(errorfile, "ERROR: No convergence, don't trust results\n");
             /* finish the main loop */
             stop = true;
             break;
-            
           }
-          printf("None remove. Try reinserting remove gaz\n");
-          for ( i = 0; i < equil->p.n[GAS]; i++)
+          fprintf(errorfile, "None remove. Try reinserting remove gaz\n");
+          for (i = 0; i < equil->p.n[GAS]; i++)
           {
+            /* It happen that some species were eliminated in the
+               process even if they should be prsent in the equilibrium.
+               In such case, we have to reinsert them */
             if (equil->p.coef[i][GAS] == 0.0)
               equil->p.coef[i][GAS] = 1e-6;
           }
@@ -1405,61 +1603,54 @@ int equilibrium(equilibrium_t *equil, problem_t P)
         else
           gas_reinserted = false;
           
-          /* Restart the loop counter to zero for a new loop */
+        /* Restart the loop counter to zero for a new loop */
         k = 0;
       }
-      else
+      else /* There is a solution */
       {
-        /* There is a solution to the matrix */
         solution_ok = true;
       }
-        
     }
       
     if (equil->verbose > 2)
       print_vec(sol, size);    /* print the solution vector */
 
-      
     /* compute the new approximation */
     new_approximation(equil, sol, P);
 
     convergence_ok = false;
 
     /* verify the convergence */
- 
     if (convergence(equil, sol))
     {
       convergence_ok = true;
 
       if (equil->verbose > 0)
       {
-        printf("The solution has converge in %d iteration\n", k);
-        printf("T = %f\n", equil->T);
+        fprintf(outputfile, "The solution has converge in %d iteration\n", k);
+        fprintf(outputfile, "T = %f\n", equil->T);
       }
       gas_reinserted = false;
-        
-      /* remove undesired condensed */
-      //if (remove_condensed(&size, &n_condensed, equil))
-      //convergence_ok = false;  /* condensed have been removed */
-
-      /* We should check if a species should be replace by another
-         in reason of temperature out of range */
       
-      /* find if a new condensed species should be include */
+      /* find if a new condensed species should be include or remove */
       if (remove_condensed(&size, &(equil->p.n_condensed), equil) ||
           include_condensed(&size, &(equil->p.n_condensed), equil, sol))
       {
-        
+
+        for (i = 0; i < size; i++)
+          free(matrix[i]);
         free(matrix);
+        
         free(sol);
         /* new size */
         size = equil->n_element + equil->p.n[CONDENSED] + roff;
-        // allocate the memory for the matrix
+
+        /* allocate the memory for the matrix */
         matrix = (double **) malloc (sizeof(double *) * size);
         for (i = 0; i < size; i++)
           matrix[i] = (double *) malloc (sizeof(double) * (size+1));
           
-        // allocate the memory for the solution vector
+        /* allocate the memory for the solution vector */
         sol = (double *) malloc (sizeof(double) * size);
           
         /* haven't converge yet */
@@ -1471,7 +1662,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     }
     else if (equil->verbose > 2)
     {
-      printf("The solution doesn't converge\n\n");
+      fprintf(outputfile, "The solution doesn't converge\n\n");
       /* ?? */
       //remove_condensed(&size, &n_condensed, equil);
     }
@@ -1484,40 +1675,35 @@ int equilibrium(equilibrium_t *equil, problem_t P)
       break;
     }
    
-
-  
     /* suppose that it will converge the next time */
     convergence_ok = true;
     
   } /* end of main loop */
 
   free (sol);
+
+  for (i = 0; i < size; i++)
+    free (matrix[i]);
   free (matrix);
   
   if (k == iteration_max)
   {
-    printf("\n");
-    printf("Maximum number of %d iterations attain\n", iteration_max);
-    printf("Don't thrust results.\n"); 
+    fprintf(outputfile, "\n");
+    fprintf(outputfile, "Maximum number of %d iterations attain\n",
+            iteration_max);
+    fprintf(outputfile, "Don't thrust results.\n"); 
     return ERROR;
   }
   else if (stop)
   {
-    printf("\n");
-    printf("Problem computing equilibrium...aborted.\n");
-    printf("Don't thrust results.\n");
+    fprintf(outputfile, "\n");
+    fprintf(outputfile, "Problem computing equilibrium...aborted.\n");
+    fprintf(outputfile, "Don't thrust results.\n");
     return ERROR;
   }
 
-  equil->isequil = 1;
+  equil->isequil = true;
   
   return SUCCESS;
 }
-  
-
-
-
-
-
-
 

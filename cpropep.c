@@ -1,29 +1,17 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
+/* $Id: cpropep.c,v 1.16 2000/05/10 01:35:59 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
-/* Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                      */
-/* Contribution of                                                     */
-/* Mark Pinese <ida.pinese@bushnet.qld.edu.au>                         */
-
-/* This program is free software; you can redistribute it and/or modify*/
-/* it under the terms of the GNU General Public License as published by*/
-/* the Free Software Foundation; either version 2 of the License, or   */
-/* (at your option) any later version.                                 */
-
-/* This program is distributed in the hope that it will be useful,     */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of      */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the       */ 
-/* GNU General Public License for more details.                        */
-
-/* You should have received a copy of the GNU General Public License   */
-/* along with this program; if not, write to the Free Software         */
-/* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.           */
+/*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
+/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*                                                                     */
+/* Licensed under the GPLv2                                            */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <malloc.h>
-/* #include <time.h> */
+#include <time.h>
 
 #include "print.h"
 #include "equilibrium.h"
@@ -40,6 +28,14 @@
 #define version "1.0"
 #define date    "17/04/2000"
 
+#define CHAMBER_MSG "Time spent for computing chamber equilibrium"
+#define FROZEN_MSG  "Time spent for computing frozen performance"
+#define EQUILIBRIUM_MSG "Time spent for computing equilibrium performance"
+
+#define TIME(function, msg) timer = clock(); function;\
+                            fprintf(outputfile,\
+                                    "%s: %f s\n", msg,\
+                                    (double)(clock() - timer)/CLOCKS_PER_SEC)
 
 /* global variable containing the information about chemical species */
 extern propellant_t  *propellant_list;
@@ -48,6 +44,9 @@ extern thermo_t	     *thermo_list;
 extern double conc_tol;
 extern double conv_tol;
 extern int    iteration_max;
+
+extern FILE * errorfile;
+extern FILE * outputfile;
 
 typedef enum _p
 {
@@ -70,7 +69,8 @@ void welcome_message(void)
   printf("----------------------------------------------------------\n");
 }
 
-void info(char **argv) {
+void info(char **argv)
+{
   printf("Try `%s -h' for more information\n", argv[0]);
 }
 
@@ -79,25 +79,25 @@ void usage(void)
   printf("Program arguments:\n");
   printf("-f file \t Perform an analysis of the propellant data in file\n");
   printf("-v num  \t Verbosity setting, 0 - 10\n");
+  printf("-o file \t Name of the results file, stdout if ommit\n");
+  printf("-e file \t Name of the file to store error messages,\
+stdout if ommit\n");
   printf("-p      \t Print the propellant list\n");
-  printf("-t      \t print the combustion product list\n");
-
+  printf("-t      \t Print the combustion product list\n");
+  printf("-h      \t Print help\n");
+  printf("-i      \t Print informations\n");
 }
 
 
 int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
 { 
-  double tmp1, tmp2;
-
+  double tmp1, tmp2, m;
+  
   int sp;
-  double m;
- 
   int section = 0;
 
-  char buffer[128];
-  char tmp[10];
-  char num[10];
-  char qt[10];
+  char buffer[128], tmp[10], num[10], qt[10];
+  
   char *bufptr;
 
   char unit; /* unit of measure of the quantity */
@@ -164,7 +164,6 @@ int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
           }
           else if (buffer[0] == '#')
           {
-            //printf("Comments\n");
             break;
           }
           else if (buffer[0] == ' ' || buffer[0] == '\n' || buffer[0] == '\0')
@@ -174,9 +173,7 @@ int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
       default:
           section = 0;
           break;
-          
     }
-    
   }
   return 0;
 }
@@ -184,38 +181,80 @@ int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
 
 int main(int argc, char *argv[])
 {
-  int c;
-  int v = 0;
+  int c, v = 0;
   char filename[FILENAME_MAX];
   FILE *fd = NULL;
   equilibrium_t *equil;
 
+  /* hold performance informations */
+  performance_t performance;
+  
+  
   int thermo_loaded     = 0;
   int propellant_loaded = 0;
 
   double exit_pressure;
+
+  int temp;
+
+  clock_t timer;
   
   p_type p;
+
+  performance.frozen_ok = false;
+  performance.equilibrium_ok = false;
   
-  /* allocate memory to hold data */
-//  if (mem_alloc())
-//    return 1;
+  errorfile = stderr;
+  outputfile = stdout;
+  
+//  global_verbose = 1;
 
-  global_verbose = 1;
+  if (argc == 1)
+  {
+    usage ();
+    exit (ERROR);
+  }
 
+  
   while (1)
   {
-    c = getopt(argc, argv, "aphtf:v:");
+    c = getopt(argc, argv, "ipht?f:v:o:e:");
 
     if (c == EOF)
       break;
     
     switch (c)
     {
-      case 'a':
-          printf("Got an a\n");
+      /* the output file */
+      case 'o':
+          if (strlen(optarg) > FILENAME_MAX)
+          {
+            printf("Filename too long!\n");
+            break;
+          }
+          strncpy (filename, optarg, FILENAME_MAX);
+
+          if ( (outputfile = fopen (filename, "w")) == NULL )
+            return 1;
+          
           break;
 
+          /* the output error file */
+      case 'e':
+          
+          if (strlen(optarg) > FILENAME_MAX)
+          {
+            printf("Filename too long!\n");
+            break;
+          }
+          strncpy (filename, optarg, FILENAME_MAX);
+
+          if ( (errorfile = fopen (filename, "w")) == NULL )
+            return (ERROR);
+          
+          break;
+
+          /* print the propellant list */
       case 'p':
           if (!propellant_loaded)
           {
@@ -223,12 +262,14 @@ int main(int argc, char *argv[])
             propellant_loaded = 1;
           }
           print_propellant_list();
-          return 0;
-          
+          return (SUCCESS);
+
+          /* print the usage */
       case 'h':
           usage();
-          return 0;
-          
+          return (SUCCESS);
+
+          /* the input file */
       case 'f':
           if (strlen(optarg) > FILENAME_MAX)
           {
@@ -238,10 +279,11 @@ int main(int argc, char *argv[])
           strncpy (filename, optarg, FILENAME_MAX);
 
           if ( (fd = fopen (filename, "r")) == NULL )
-            return 1;
+            return (ERROR);
           
           break;
-          
+
+          /* print the thermo list */
       case 't':
           if (!thermo_loaded)
           {
@@ -249,8 +291,9 @@ int main(int argc, char *argv[])
             thermo_loaded = 1;
           }
           print_thermo_list();
-          return 0;
-          
+          return (SUCCESS);
+
+          /* set the verbosity level */
       case 'v':
           v = atoi(optarg);
           if (v < 0 || v > 10)
@@ -262,7 +305,12 @@ int main(int argc, char *argv[])
           
       case '?':
           info(argv);
-          return 0;
+          return (SUCCESS);
+
+          /* print information */
+      case 'i':
+          welcome_message();
+          return (SUCCESS);
     }
   }  
   
@@ -277,7 +325,15 @@ int main(int argc, char *argv[])
     propellant_loaded = 1;
   }
   
-  welcome_message();
+  //welcome_message();
+
+
+  /* test code to search by formula name
+  if ( (temp = propellant_search_by_formula("C")) != -1)
+    printf("%s\n", (propellant_list + temp)->name);
+  else
+    printf("Not found in the database\n");
+  */
   
   if (fd != NULL)
   {
@@ -291,38 +347,58 @@ int main(int argc, char *argv[])
     {
       case SIMPLE_EQUILIBRIUM:
           print_propellant_composition(equil);
-          if (equilibrium(equil, TP))
-            break;
+          TIME(if (equilibrium(equil, TP)) break,
+               CHAMBER_MSG);
           print_product_composition(equil);
           print_product_properties(equil);
           break;
       case FIND_FLAME_TEMPERATURE:
           print_propellant_composition(equil);
-          if (equilibrium(equil, HP))
-            break;
+          TIME(if (equilibrium(equil, HP)) break,
+               CHAMBER_MSG);
           print_product_composition(equil);
           print_product_properties(equil);
           break;
       case FROZEN_PERFORMANCE:
-          frozen_performance(equil, exit_pressure);
+          print_propellant_composition(equil);
+          TIME(if (equilibrium(equil, HP)) break,
+               CHAMBER_MSG);
+          TIME(frozen_performance(equil, &performance, exit_pressure),
+               FROZEN_MSG);
+          print_performance_information(&performance);
           break;
       case EQUILIBRIUM_PERFORMANCE:
-          equilibrium_performance(equil, exit_pressure);
+          print_propellant_composition(equil);
+          TIME(if (equilibrium(equil, HP)) break,
+               CHAMBER_MSG);
+          TIME(equilibrium_performance(equil, &performance, exit_pressure),
+               EQUILIBRIUM_MSG);
+          print_performance_information(&performance);
           break;
       case ALL_PERFORMANCE:
-          frozen_performance(equil, exit_pressure);
-          equilibrium_performance(equil, exit_pressure);
+          print_propellant_composition(equil);
+          TIME(if (equilibrium(equil, HP)) break,
+               CHAMBER_MSG);
+          TIME(frozen_performance(equil, &performance, exit_pressure),
+               FROZEN_MSG);
+          TIME(equilibrium_performance(equil, &performance, exit_pressure),
+               EQUILIBRIUM_MSG);
+          print_performance_information(&performance);
           break;
     }
-    dealloc_equillibrium (equil);
+    dealloc_equilibrium (equil);
     free (equil);
   }
   
   free (propellant_list);
   free (thermo_list);
 
+  if (errorfile != stderr)
+    fclose (errorfile);
+
+  if (outputfile != stdout)
+    fclose (outputfile);
+  
   return 0;
 
 }
-
-

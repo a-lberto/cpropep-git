@@ -1,33 +1,22 @@
 #ifndef equilibrium_h
 #define equilibrium_h
 
-/* equilibrium.h  -  Calculation of Complex Chemical Equilibrium           */
+/* equilibrium.h  -  Calculation of Complex Chemical Equilibrium       */
+/* $Id: equilibrium.h,v 1.11 2000/05/10 01:36:00 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
-/* Antoine Lefebvre <antoine.lefebvre@polymtl.ca                       */
-/* Mark Pinese <ida.pinese@bushnet.qld.edu.au>                         */
+/*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
+/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*                                                                     */
+/* Licensed under the GPLv2                                            */
 
-/* This program is free software; you can redistribute it and/or modify*/
-/* it under the terms of the GNU General Public License as published by*/
-/* the Free Software Foundation; either version 2 of the License, or   */
-/* (at your option) any later version.                                 */
 
-/* This program is distributed in the hope that it will be useful,     */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of      */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the       */ 
-/* GNU General Public License for more details.                        */
-
-/* You should have received a copy of the GNU General Public License   */
-/* along with this program; if not, write to the Free Software         */
-/* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.           */
+#include "compat.h"
 
 /**************************************************************
 These variables hold the number of records for propellant and thermo data
 ***************************************************************/
 unsigned long num_propellant, num_thermo;
 
-
-//#define MAX_PROPELLANT 1030
-//#define MAX_THERMO     1729
 
 /* MACRO: Number of different molecule in propellant */
 #define MAX_COMP       20
@@ -37,8 +26,8 @@ unsigned long num_propellant, num_thermo;
 
 #define GRAM_TO_MOL(g, sp)   g/propellant_molar_mass(sp)
 
-#define __min(a, b) ( (a) <= (b) ? (a) : (b))
-#define __max(a, b) ( (a) >= (b) ? (a) : (b))
+//#define __min(a, b) ( (a) <= (b) ? (a) : (b))
+//#define __max(a, b) ( (a) >= (b) ? (a) : (b))
 
 #define _min(a, b, c) __min( __min(a, b), c)
 #define _max(a, b, c) __max( __max(a, b), c)
@@ -165,9 +154,7 @@ DATE: February 24, 2000
 typedef struct _equilibrium
 {
   unsigned int  verbose;      /* verbose level */
-    
-  //composition_t *c;           /* pointer to a propellant composition */
-  //product_t     *p;           /* pointer to a product struct */
+
   composition_t c; 
   product_t     p;
   
@@ -183,7 +170,7 @@ typedef struct _equilibrium
   double P; /* pressure */
 
     /* not needed */
-  int    isequil;             /* true when the equilibrium have been compute */
+  bool    isequil;       /* true when the equilibrium have been compute */
 
   double         n;           /* total number of mole */
   double         delta_ln_n;
@@ -226,6 +213,11 @@ AUTHOR: Antoine Lefebvre
 int thermo_search(char *str);
 
 int propellant_search(char *str);
+
+
+int atomic_number(char *symbole);
+
+int propellant_search_by_formula(char *str);
 
 /************************************************************
 FUNCTION: This function search for all elements present in
@@ -417,8 +409,9 @@ int initialize_equilibrium(equilibrium_t *e);
 FUNCTION: Dealloc what have been allocated by 
           initialize_equilibrium
 ***************************************************************/
-int dealloc_equillibrium(equilibrium_t *e);
+int dealloc_equilibrium(equilibrium_t *e);
 
+int copy_equilibrium(equilibrium_t *dest, equilibrium_t *src);
 
 /***************************************************************
 FUNCTION: This function free all the pointer allocated in the

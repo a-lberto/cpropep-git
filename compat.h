@@ -9,6 +9,8 @@
   Mark Pinese 24/4/2000
 */
 
+
+
 #ifdef _MSC_VER
   /* MSVC++ 6.0 Std */
 #define STRNCASECMP		_strnicmp
@@ -25,8 +27,10 @@ typedef enum
 } bool;
 #endif /* !defined (__cplusplus) */
 
-#else
- /* GCC */
+#endif /* define _MSC_VER */
+
+#ifdef GCC
+
 #define STRNCASECMP		strncasecmp
 #define __min(a, b) ( (a) <= (b) ? (a) : (b))
 #define __max(a, b) ( (a) >= (b) ? (a) : (b))
@@ -37,6 +41,6 @@ typedef enum
   true = 1
 } bool;
 
-#endif
+#endif /* define GCC */
 
 #endif	/* !defined(COMPAT_H) */

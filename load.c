@@ -150,7 +150,8 @@ int load_thermo(char *filename)
 				/* Atoms still to be processed */
 		    
 				/* find the atomic number of the element */
-				for (l = 0; l < N_SYMB; l++)
+/*
+        for (l = 0; l < N_SYMB; l++)
 				{
 					if (!strcmp(tmp, symb[l]))
 					{
@@ -158,6 +159,8 @@ int load_thermo(char *filename)
 						break;
 					}
 				}
+*/
+        (thermo_list + i)->elem[k] = atomic_number(tmp);
 		    
 				/* And the number of atoms */
 				strncpy(tmp_ptr, buf_ptr + k * 8 + 13, 6);
@@ -332,7 +335,7 @@ int load_propellant(char *filename)
   
   FILE *fd;
   
-  int i = 0, j, k, len, name_start, name_end, name_len;
+  int i = 0, j, len, name_start, name_end, name_len;
   
   /* temporary string to store string in order to treat the informations */
   char buf[88], *buf_ptr, tmp[70], *tmp_ptr;
@@ -481,7 +484,8 @@ int load_propellant(char *filename)
 			tmp[2] = '\0';
         
 			/* find the atomic number of the element */
-			for (k = 0; k < N_SYMB; k++)
+/*
+      for (k = 0; k < N_SYMB; k++)
 			{
 				if (!(strcmp(tmp, symb[k]))) 
 				{
@@ -489,6 +493,8 @@ int load_propellant(char *filename)
 					break;
 				}
 			}
+*/
+      (propellant_list + i)->elem[j] = atomic_number(tmp);
 		}
       
 		strncpy(tmp_ptr, buf_ptr + 69, 5);

@@ -2,6 +2,7 @@
 #define derivative_h
 
 #include "equilibrium.h"
+
 typedef struct deriv
 {
   double del_lnV_lnT; /* derivative of ln(V) with respect to ln(T)

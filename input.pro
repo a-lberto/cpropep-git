@@ -16,10 +16,10 @@ Propellant
 #+258   4m       copper
 #+847   5g       sulphur
 #+685   90g      oxygen
-#+788   20g      HTPB
++788   20g      HTPB
 #+771   10g      propane
-#+34    15g      Aluminium
-+1026  20g      Asphalt
++34    15g      Aluminium
+#+1026  20g      Asphalt
 #+375   1g       Ferric oxyde
 
-HP  2000  69.8  4 
+PE  2000  69.8  4 

@@ -1,5 +1,6 @@
-/* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: performance.c,v 1.5 2000/05/03 02:19:15 antoine Exp $ */
+/* performance.c  -  Compute performance caracteristic of a motor
+                     considering equilibrium                      */
+/* $Id: performance.c,v 1.6 2000/05/10 01:36:00 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
@@ -13,7 +14,7 @@
 
 #include <time.h>
 
-//#include "type.h"
+#include "performance.h"
 #include "derivative.h"
 #include "print.h"
 #include "equilibrium.h"
@@ -28,6 +29,9 @@ double compute_temperature(equilibrium_t *e, double pressure,
                            double p_entropy);
 
 double g = 9.80665;
+
+extern FILE * errorfile;
+extern FILE * outputfile;
 
 /* Entropy of the product at the exit pressure and temperature */
 double product_entropy_exit(equilibrium_t *e, double pressure, double temp)
@@ -54,6 +58,7 @@ double product_enthalpy_exit(equilibrium_t *e, double temp)
   return enth;
 }
 
+/* The specific heat of the mixture for frozen performance */
 double mixture_specific_heat_0(equilibrium_t *e, double temp)
 {
   int i;
@@ -80,14 +85,10 @@ double compute_temperature(equilibrium_t *e, double pressure, double p_entropy)
   int i = 0;
 
   double delta_lnt;
-  //double p_entropy;   /* Enthalpy of the mixture (chamber) */
   double temperature;
 
-  
   /* The first approximation is the chamber temperature */
-  temperature = e->T; 
-  //p_entropy = product_entropy(e);
-  // e->entropy;//product_entropy(e);
+  temperature = e->T;
   
   do
   {
@@ -96,14 +97,9 @@ double compute_temperature(equilibrium_t *e, double pressure, double p_entropy)
       /mixture_specific_heat_0(e, temperature);
 
     temperature = exp (log(temperature) + delta_lnt);
-
-    
-    //if (P == SP)
-    //equilibrium(e, SP);
-    
-    
+        
     i++;
-    
+
   } while (fabs(delta_lnt) >= 0.5e-4 && i < TEMP_ITERATION_MAX);
 
   return temperature;
@@ -111,156 +107,129 @@ double compute_temperature(equilibrium_t *e, double pressure, double p_entropy)
 
 double velocity_of_flow(equilibrium_t *e, double exit_temperature)
 {
-
   return sqrt(2000*(product_enthalpy(e)*R*e->T -
-                 product_enthalpy_exit(e, exit_temperature)*
-                 R*exit_temperature)/propellant_mass(e));
-
+                    product_enthalpy_exit(e, exit_temperature)*
+                    R*exit_temperature)/propellant_mass(e));
 }
 
-int frozen_performance(equilibrium_t *e, double exit_pressure)
+int frozen_performance(equilibrium_t *e, performance_t *p,
+                       double exit_pressure)
 {
   double sound_velocity;
   double flow_velocity;
-  double throat_temperature;
-  double exit_temperature;
   double pc_pt;
-  double cp;
-  double cp_cv; /* Ratio of specific heat, it is equal to the
-                   isentropic exponent for frozen problem */
   double chamber_entropy;
-
-  clock_t timer;
-  timer = clock();
-
   
-  printf("\nFrozen performance characteristics.\n");
-  printf("-----------------------------------\n");
-  
-  /* Print the propellant composition */
-  print_propellant_composition(e);
 
   /* find the equilibrium composition in the chamber */
-  if (equilibrium(e, HP))
+  if (!(e->isequil)) /* if the equilibrium have not already been compute */
   {
-    printf("No equilibrium, performance evaluation aborted.\n");
-    return ERROR;
+    if (equilibrium(e, HP))
+    {
+      fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
+      return ERROR;
+    }
   }
+ 
+  /* Cp of the combustion point assuming frozen */
+  p->frozen.cp    = mixture_specific_heat_0(e, e->T)*R;
+  /* Cv = Cp - nR  (for frozen) */
+  p->frozen.cp_cv = p->frozen.cp / (p->frozen.cp - e->n*R);
 
-  /* Cp of the combustion point assuming frozen */ 
-  cp = mixture_specific_heat_0(e, e->T)*R;
-  cp_cv = cp / (cp - e->n*R);
-  
-
-  printf("\nChamber results.\n");
-  printf("-----------------\n");
   if (e->verbose > 0)
   {
     print_product_composition(e);  
   }
-  print_product_properties(e);
-  printf("Cp                   : % .2f\n", cp);
-  printf("Cp/Cv                : % .2f\n", cp_cv);
-    
-  chamber_entropy = product_entropy(e);
+
+  p->frozen.molar_mass = product_molar_mass(e);
+  chamber_entropy      = product_entropy(e);
   
   /* Find the exit temperature */
-  exit_temperature = compute_temperature(e, exit_pressure, chamber_entropy);
+  p->frozen.exit.temperature = compute_temperature(e, exit_pressure,
+                                                   chamber_entropy);
   
   /* We must check if the exit temperature is more than 50 K lower
-     than any transition temperature of condensed species */
+     than any transition temperature of condensed species.
+     In this case the results are not good and must be reject. */
+
+  p->frozen.exit.pressure    = exit_pressure;
+  p->frozen.exit.velocity    = velocity_of_flow(e, p->frozen.exit.temperature);
+  p->frozen.specific_impulse = p->frozen.exit.velocity/g;
 
   
-  printf("\nExit conditions\n");
-  printf("---------------\n");
-  printf("Exit temperature  : % .2f K\n",  exit_temperature);
-  printf("Exit pressure     : % .2f atm\n", exit_pressure);
-  printf("Velocity of flow  : % .2f m/s\n",
-         velocity_of_flow(e, exit_temperature));
-  printf("Specific impulse  : % .2f s\n",
-         velocity_of_flow(e, exit_temperature)/g);
-
-
   /* Computing throat condition */
-
-  /* Approximation of the throat pressure */
-  pc_pt = pow(cp_cv/2 + 0.5, cp_cv/(cp_cv - 1) );
+  pc_pt = pow (p->frozen.cp_cv/2 + 0.5,
+               p->frozen.cp_cv/(p->frozen.cp_cv - 1) );
   do
   {
-    throat_temperature = compute_temperature(e, e->P/pc_pt, chamber_entropy);
-    sound_velocity = sqrt( 1000*e->n*R*throat_temperature*
-                           cp_cv/propellant_mass(e));
-    flow_velocity = velocity_of_flow(e, throat_temperature);
+    p->frozen.throat.temperature = compute_temperature(e, e->P/pc_pt,
+                                                       chamber_entropy);
+    
+    sound_velocity = sqrt( 1000 * e->n * R * p->frozen.throat.temperature *
+                           p->frozen.cp_cv/propellant_mass(e));
+    
+    flow_velocity = velocity_of_flow(e, p->frozen.throat.temperature);
+    
     pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
-                           /(1000*(cp_cv + 1)*e->n*R*throat_temperature
+                           /(1000*(p->frozen.cp_cv + 1)*
+                             e->n*R*p->frozen.throat.temperature
                              /propellant_mass(e))));
     
   } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
                  /pow(flow_velocity, 2)) > 0.4e-4);
 
-  printf("\nThroat conditions\n");
-  printf("------------------\n");
-  printf("Pc/Pt             : % .2f \n", pc_pt);
-  printf("Throat pressure   : % .2f atm\n", e->P/pc_pt);
-  printf("Throat temperature: % .2f K\n", throat_temperature);
-  printf("Sound velocity    : % .2f m/s\n", sound_velocity);
 
-  printf("\nComputation time for frozen: %f s\n",
-         (double)(clock() - timer)/CLOCKS_PER_SEC);
-  printf("---------------------------------------------\n");
+  p->frozen.throat.pressure    = e->P/pc_pt;
+  p->frozen.throat.velocity    = sound_velocity;
+
+  p->frozen_ok = true;
   
   return SUCCESS;
-  
 }
 
 
-int equilibrium_performance(equilibrium_t *e, double exit_pressure)
+int equilibrium_performance(equilibrium_t *e, performance_t *p,
+                            double exit_pressure)
 {
 
-  double sound_velocity;
+  double sound_velocity = 0.0;
   double flow_velocity;
-  double throat_temperature;
   double pc_pt;
   double chamber_entropy;
   
   deriv_t d;
-
-  clock_t timer;
   
   /* Allocate a new equlibrium structure to hold information of the
      equilibrium at different point we consider */
+
   equilibrium_t *ne;
   ne = (equilibrium_t *)malloc(sizeof(equilibrium_t));
+  initialize_equilibrium(ne);
 
-  timer = clock();
-
-  printf("\nEquilibrium performance characteristics.\n");
-  printf("-----------------------------------------.\n");
-  
-  /* Print the propellant composition */
-  print_propellant_composition(e);
-  
   /* find the equilibrium composition in the chamber */
-  if (equilibrium(e, HP))
+  if (!(e->isequil))/* if the equilibrium have not already been compute */
   {
-    printf("No equilibrium, performance evaluation aborted.\n");
-    return ERROR;
+    if (equilibrium(e, HP))
+    {
+      fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
+      return ERROR;
+    }
   }
-
+      
+  /* Compute derivative */
   derivative(e, &d);
   
-  printf("\nChamber results.\n");
-  printf("-----------------\n");
   if (e->verbose > 0)
   {
     print_product_composition(e);
   }
-  print_product_properties(e);
-  print_derivative_results(d);
-  
-  *ne = *e;  
-  chamber_entropy = product_entropy(e);
 
+  /* Begin by first aproximate the new equilibrium to be
+     the same as the chamber equilibrium */
+
+  copy_equilibrium(ne, e);
+  
+  chamber_entropy = product_entropy(e);
   
   /* Computing throat condition */
   /* Approximation of the throat pressure */
@@ -270,19 +239,23 @@ int equilibrium_performance(equilibrium_t *e, double exit_pressure)
   {
     ne->P = e->P/pc_pt;
 
+    /* We must compute the new equilibrium each time */
     if (equilibrium(ne, SP))
     {
-      printf("No equilibrium, performance evaluation aborted.\n");
+      fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
       break;
     }
+
     if (e->verbose > 0)
     {
       print_product_composition(e);
     }
-    
-    derivative(e, &d);
-    throat_temperature = ne->T;
-    sound_velocity = sqrt (1000*ne->n*R*throat_temperature*
+
+    /* Compute the new derivative properties */
+    derivative(ne, &d);
+    p->equilibrium.throat.temperature = ne->T;
+
+    sound_velocity = sqrt (1000*ne->n*R*p->equilibrium.throat.temperature*
                            d.isex/propellant_mass(ne));
     
     flow_velocity = sqrt (2000*(product_enthalpy(e)*R*e->T -
@@ -290,52 +263,57 @@ int equilibrium_performance(equilibrium_t *e, double exit_pressure)
                           propellant_mass(ne));
 
     pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
-                           /(1000*(d.isex + 1)*ne->n*R*throat_temperature
+                           /(1000*(d.isex + 1)*ne->n*R*
+                             p->equilibrium.throat.temperature
                              /propellant_mass(ne))));
     
   } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
                  /pow(flow_velocity, 2)) > 0.4e-4);
 
-  derivative(e, &d);
-  
-  printf("\nThroat conditions\n");
-  printf("-----------------\n");
-  printf("Pc/Pt                : % .2f\n", pc_pt);
-  printf("Sound velocity       : % .2f m/s\n", sound_velocity);
+  derivative(ne, &d);
 
-  print_product_properties(ne);
-  print_derivative_results(d);
-  
+  p->equilibrium.throat.pressure    = e->P/pc_pt;
+  p->equilibrium.throat.velocity    = sound_velocity;
+
+  p->equilibrium.throat.cp         = d.cp;
+  p->equilibrium.throat.cp_cv      = d.cp_cv;
+  p->equilibrium.throat.isex       = d.isex;
+  p->equilibrium.throat.molar_mass = product_molar_mass(ne);
+    
   ne->entropy = chamber_entropy;
   ne->P = exit_pressure;
 
-  //printf("Allo\n");
+  /* Find the exit equilibrium */
   if (equilibrium(ne, SP))
   {
-    printf("No equilibrium, performance evaluation aborted.\n");
+    fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
     return ERROR;
   }
-  //printf("Allo\n");
-  
-  derivative(e, &d);
-  
-  printf("\nExit conditions\n");
-  printf("-----------------\n");
+
+  /* Compute new derivative properties */
+  derivative(ne, &d);
+
+  p->equilibrium.exit.cp         = d.cp;
+  p->equilibrium.exit.cp_cv      = d.cp_cv;
+  p->equilibrium.exit.isex       = d.isex;
+  p->equilibrium.exit.molar_mass = product_molar_mass(ne);
  
   flow_velocity = sqrt(2000*(product_enthalpy(e)*R*e->T -
                              product_enthalpy(ne)*R*ne->T)/
                        propellant_mass(ne));
-  
-  printf("Velocity of flow     : % .2f m/s\n", flow_velocity);
-  printf("Specific impulse     : % .2f s \n", flow_velocity/g);
-  
-  print_product_properties(ne);
-  print_derivative_results(d);
 
-  printf("\nComputation time for equilibrium: %f s\n",
-         (double)(clock() - timer)/CLOCKS_PER_SEC);
+  p->equilibrium.exit.temperature = ne->T;
+  p->equilibrium.exit.pressure    = ne->P;
+  p->equilibrium.exit.velocity    = flow_velocity;
+  p->equilibrium.specific_impulse = flow_velocity/g;
   
-  return 0;
+  p->equilibrium_ok = true;
+
+  /* we have to deallocate the new equilibrium */
+  dealloc_equilibrium (ne);
+  free (ne);
+  
+  return SUCCESS;
 }
 
 

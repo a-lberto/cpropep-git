@@ -1,3 +1,11 @@
+/* derivative.c  -  Fill the mattrix to compute thermochemical derivative
+                    relative to logarithm of pressure and temperature */
+/* $Id: derivative.c,v 1.4 2000/05/10 01:36:00 antoine Exp $ */
+/* Copyright (C) 2000                                                  */
+/*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
+/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*                                                                     */
+/* Licensed under the GPLv2                                            */
 
 
 #include <stdlib.h>
@@ -9,8 +17,11 @@
 #include "equilibrium.h"
 #include "performance.h"
 
+#include "compat.h"
+#include "return.h"
 
-
+extern FILE * errorfile;
+extern FILE * outputfile;
 
 /* Compute the specific_heat of the mixture using thermodynamics
    derivative with respect to logarithm of temperature */
@@ -62,13 +73,6 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
 int derivative(equilibrium_t *e, deriv_t *d)
 {
   int i;
-  //double cp, cv;
-
-  //double del_lnV_lnT; /* derivative of ln(V) with respect to ln(T)
-  /*at constant pressure */
-  //double del_lnV_lnP; /* derivative of ln(V) with respect to ln(P)
-  /*                     at constant temperature */
-  
   int       size;
   double ** matrix;   
   double  * sol;
@@ -76,27 +80,25 @@ int derivative(equilibrium_t *e, deriv_t *d)
   /* the size of the coefficient matrix */
   size = e->n_element + e->p.n[CONDENSED] + 1;
   
-  // allocate the memory for the matrix
+  /* allocate the memory for the matrix */
   matrix = (double **) malloc (sizeof(double *) * size);
   for (i = 0; i < size; i++)
     matrix[i] = (double *) malloc (sizeof(double) * (size+1));
   
-  // allocate the memory for the solution vector
+  /* allocate the memory for the solution vector */
   sol = (double *) calloc (size, sizeof(double));
 
   fill_temperature_derivative_matrix(matrix, e);
-
-  //printf("\n");
   
   if ( lu(matrix, sol, size) == -1 )
   {
-    printf("The matrix is singular.\n");
+    fprintf(outputfile, "The matrix is singular.\n");
   }
   else
   {
     if (e->verbose > 1)
     {
-      printf("Temperature derivative results.\n");
+      fprintf(outputfile, "Temperature derivative results.\n");
       print_vec(sol, size);
     }
     
@@ -109,13 +111,13 @@ int derivative(equilibrium_t *e, deriv_t *d)
 
   if ( lu(matrix, sol, size) == -1 )
   {
-    printf("The matrix is singular.\n");
+    fprintf(outputfile, "The matrix is singular.\n");
   }
   else
   {
     if (e->verbose > 1)
     {
-      printf("Pressure derivative results.\n");
+      fprintf(outputfile, "Pressure derivative results.\n");
       print_vec(sol, size);
     }
     d->del_lnV_lnP = sol[e->n_element + e->p.n[CONDENSED]] - 1;
@@ -128,14 +130,14 @@ int derivative(equilibrium_t *e, deriv_t *d)
 
   if (e->verbose > 1)
   {
-    printf("\n");
-    printf("del ln(V)/del ln(T)  = % f\n", d->del_lnV_lnT);
-    printf("del ln(V)/del ln(P)  = % f\n", d->del_lnV_lnP);
-    printf("Cp                   = % f\n", d->cp);
-    printf("Cv                   = % f\n", d->cv);
-    printf("Cp/Cv                = % f\n", d->cp_cv);
-    printf("Isentropic exponent  = % f\n", d->isex);
-    printf("RT/V                 = % f\n", e->P/e->n);
+    fprintf(outputfile, "\n");
+    fprintf(outputfile, "del ln(V)/del ln(T)  = % f\n", d->del_lnV_lnT);
+    fprintf(outputfile, "del ln(V)/del ln(P)  = % f\n", d->del_lnV_lnP);
+    fprintf(outputfile, "Cp                   = % f\n", d->cp);
+    fprintf(outputfile, "Cv                   = % f\n", d->cv);
+    fprintf(outputfile, "Cp/Cv                = % f\n", d->cp_cv);
+    fprintf(outputfile, "Isentropic exponent  = % f\n", d->isex);
+    fprintf(outputfile, "RT/V                 = % f\n", e->P/e->n);
   }
   free(matrix);
   free(sol);
@@ -154,11 +156,11 @@ int fill_temperature_derivative_matrix(double **matrix, equilibrium_t *e)
   /* fill the common part */
   fill_matrix(matrix, e);
   
-  // del ln(n)/ del ln(T)
+  /* del ln(n)/ del ln(T) */
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
 
-  // right side
+  /* right side */
   for (j = 0; j < e->n_element; j++)
   {
     tmp = 0.0;
@@ -198,7 +200,7 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
   // del ln(n)/ del ln(T)
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
-
+  
   // right side
   for (j = 0; j < e->n_element; j++)
   {
@@ -206,22 +208,22 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
     for (k = 0; k < e->p.n[GAS]; k++)
       tmp += product_element_coef( e->element[j], e->p.species[k][GAS]) * 
         e->p.coef[k][GAS];
- 
+    
     matrix[j][ e->n_element + e->p.n[CONDENSED] + 1] = tmp;
-
+    
   }
 
   
   for (j = 0; j < e->p.n[CONDENSED]; j++) // row
     matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 0;
-
+  
   
   tmp = 0.0;
   for (k = 0; k < e->p.n[GAS]; k++)
     tmp += e->p.coef[k][GAS]; 
   
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element
-                                           + e->p.n[CONDENSED]+ 1] = tmp;
+                                          + e->p.n[CONDENSED]+ 1] = tmp;
   
   return 0;
 }

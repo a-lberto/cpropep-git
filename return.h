@@ -2,8 +2,8 @@
 #define RETURN_H
 
 /* Codes used in some functions by Antoine Lefebvre */
-#define  SUCCESS 0
-#define  ERROR   1
+#define  SUCCESS  0
+#define  ERROR   -1
 
 /*
   Return codes

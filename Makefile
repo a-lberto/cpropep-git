@@ -2,10 +2,12 @@
 
 
 CC   = gcc
-COPT = -g -Wall
+COPT = -g -O -pg -Wall
 LIB  =  -lcpropep -lm -lnum -lcruft -lf2c
 LIBDIR = -L../libnum/ -L.
 INCLUDEDIR = -I../libnum/ -I.
+
+DEF = -DGCC
 
 LIBNAME = libcpropep.a
 
@@ -20,7 +22,7 @@ OBJS = cpropep.o getopt.o
 all: $(LIBNAME) $(PROG)
 
 .c.o:
-	$(CC) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
+	$(CC) $(DEF) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
 
 $(LIBNAME): $(LIBOBJS)
 	ar -r $@ $(LIBOBJS)
