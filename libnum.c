@@ -111,6 +111,7 @@ int lu(double **matrix, double *solution, int neq)
   {
     L[i] = (double *)calloc(neq, sizeof(double));
     U[i] = (double *)calloc(neq, sizeof(double));
+    solution[i] = 0; /* reset the solution vector */
   }
   
   /* set the diagonal to 1 */
@@ -201,7 +202,7 @@ int print_square_matrix(double **matrix, int neq)
   for (i = 0; i < neq; i++)
   {
     for (j = 0; j < neq; j++)
-      printf("%f ", matrix[i][j]);
+      printf("% .5f ", matrix[i][j]);
     printf("\n");
   }
   printf("\n");
@@ -216,7 +217,7 @@ int print_matrix(double **matrix, int neq)
   for (i = 0; i < neq; i++)
   {
     for (j = 0; j <= neq; j++)
-      printf("%f ", matrix[i][j]);
+      printf("% .5e ", matrix[i][j]);
     printf("\n");
   }
   printf("\n");
@@ -227,7 +228,7 @@ int print_vec(double *vec, int neq)
 {
   int i;
   for (i = 0; i < neq; i++)
-    printf("%f ", vec[i]);
+    printf("% .5e ", vec[i]);
   printf("\n");
   return 0;
 }
