@@ -119,13 +119,16 @@ int NUM_rkf(int (*f)(int neq, double time, double *y, double *dy, void *data),
       K6[i] = h * dy[i];
     }
 
-    err = DBL_MAX;
+    err = 0.0;
     for (i = 0; i <  neq; i++)
     {
-      E[i] = fabs((K1[i]/360.0 - 128.0*K3[i]/4275.0 - 2197.0*K4[i]/75240.0 +
-                   K5[i]/50.0 + 2.0*K6[i]/55.0)/h);
-      err = ((E[i] < err) ? E[i] : err);      
+      E[i] = fabs(K1[i]/360.0 - 128.0*K3[i]/4275.0 - 2197.0*K4[i]/75240.0 +
+                   K5[i]/50.0 + 2.0*K6[i]/55.0); /* /h ?? */
+      //printf("E[%d] = %f\n", i, E[i]);
+      err = ((E[i] > err) ? E[i] : err);      
     }
+
+    //printf("err = %e\n", err);
 
     if ((err < epsil) || (h <= step/1000) )
     {

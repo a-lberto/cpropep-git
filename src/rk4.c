@@ -10,6 +10,8 @@ int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data),
   int i;
   int n;
 
+  int status;
+  
   int length;
   
   double t = 0.0;
@@ -42,7 +44,11 @@ int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data),
 
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, data);
+      status = f(neq, t, tmp, dy, data);
+
+      if (status)
+        return status;
+        
       K1[i] = step * dy[i];
       
       tmp[i] = a[i + neq*n] + K1[i]/2;  /* for the next step */           
@@ -51,7 +57,11 @@ int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data),
     /* FIXME: verify the coefficient t + step/2 */
     for (i = 0; i < neq; i++)
     {
-      f(neq, t + step/2, tmp, dy, data);
+      status = f(neq, t + step/2, tmp, dy, data);
+
+      if (status)
+        return -1;
+        
       K2[i] = step * dy[i];
       
       tmp[i] = a[i + neq*n] + K2[i]/2;
@@ -59,7 +69,11 @@ int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data),
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t + step/2, tmp, dy, data);
+      status = f(neq, t + step/2, tmp, dy, data);
+
+      if (status)
+        return status;
+        
       K3[i] = step * dy[i];
       
       tmp[i] = a[i + neq*n] + K3[i];
@@ -67,7 +81,10 @@ int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data),
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t + step, tmp, dy, data);
+      status = f(neq, t + step, tmp, dy, data);
+        if (status)
+          return -1;
+          
       K4[i] = step * dy[i];
     }
     
