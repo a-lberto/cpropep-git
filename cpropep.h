@@ -35,6 +35,7 @@ MACRO: Hold the number of species in for each type data type
 
 #define GRAM_TO_MOL(g, sp)   g/propellant_molar_mass(sp)
 
+
 /****************************************************************
 TYPE:  Enumeration of the possible state of a substance
 *****************************************************************/
@@ -143,23 +144,24 @@ DATE: February 24, 2000
 ******************************************************************/
 typedef struct _equilibrium
 {
-  composition_t *c;           // pointer to a propellant composition
-  product_t     *p;           // pointer to a product struct
+  unsigned int  verbose;      /* verbose level */
+
+  composition_t *c;           /* pointer to a propellant composition */
+  product_t     *p;           /* pointer to a product struct */
 
   /* list of element in the composition */
   int  *element;
   int   n_element;
 
-
   int is_state_set; /* true if you have set the state */
   double T;
   double P;
 
-  int    isequil;             //true when the equilibrium have been compute
+  int    isequil;             /* true when the equilibrium have been compute */
 
-  double         n;           // total number of mole
+  double         n;           /* total number of mole */
   double         delta_ln_n;
-  double        *delta_ln_nj; // hold delta ln(nj) for each gazeous species
+  double        *delta_ln_nj; /* hold delta ln(nj) for each gazeous species */
 } equilibrium_t;
 
 
@@ -222,6 +224,10 @@ AUTHOR: Antoine Lefebvre
 int print_gazeous(product_t p);
 
 
+
+int print_product_composition(equilibrium_t *e);
+
+int set_verbose(equilibrium_t *e, int v);
 
 /*************************************************************
 FUNCTION: Search in the field name of thermo_list and return

@@ -1,6 +1,7 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
 /* Copyright (C) 2000                                                  */
 /* Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                      */
+/* Contribution of                                                     */
 /* Mark Pinese <ida.pinese@bushnet.qld.edu.au>                         */
 
 /* This program is free software; you can redistribute it and/or modify*/
@@ -33,6 +34,12 @@
 propellant_t	*propellant_list;
 thermo_t	*thermo_list;
 
+
+double conc_tol = 1e-8;
+
+double conv_tol = 0.5e-5;
+
+int iteration_max = 200;
 
 /****************************************************************
 VARIABLE: Contain the molar mass of element by atomic number
@@ -184,7 +191,7 @@ double gibbs(int sp, state_t st, double nj, double n, float T, float P)
 
   double g;
 
-  if (nj == 0.0)
+  if ( (st == GAS) && (nj == 0.0))
     return 0;
 
   switch (st)
@@ -194,7 +201,7 @@ double gibbs(int sp, state_t st, double nj, double n, float T, float P)
     break;
   case CONDENSED:
     g = gibbs0(sp, T);
-    
+    break;
   default:
     g = 0;
   }  
@@ -319,6 +326,26 @@ int print_gazeous(product_t p)
   printf("\n");
   return 0;
 }
+
+int print_product_composition(equilibrium_t *e)
+{
+  int i;
+
+  printf("Composition in molar fraction\n");
+  for (i = 0; i < e->p->n[GAS]; i++)
+  {
+    if (!(e->p->coef[GAS][i] == 0.0))
+      printf("%s \t % .4e\n", (thermo_list + e->p->species[GAS][i])->name,
+	     e->p->coef[GAS][i]/e->n);
+  }
+  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  {
+    printf("%s \t % .4e\n", (thermo_list + e->p->species[CONDENSED][i])->name,
+	   e->p->coef[CONDENSED][i]/e->n);
+  }
+  return 0;
+}
+
 
 int list_element(equilibrium_t *e)
 {
@@ -487,6 +514,9 @@ int initialize_equilibrium(equilibrium_t *e)
 {
   int i;
 
+  /* verbose level one by default */
+  e->verbose = 1;
+
   /* no equilibrium yet */
   e->isequil = 0;
   /* the state have not been set */
@@ -574,6 +604,12 @@ int propellant_element_coef(int element, int molecule)
     if (propellant_list[molecule].elem[i] == element)
       return propellant_list[molecule].coef[i];
   }
+  return 0;
+}
+
+int set_verbose(equilibrium_t *e, int v)
+{
+  e->verbose = v;
   return 0;
 }
 
@@ -709,12 +745,21 @@ int fill_matrix(double **matrix, equilibrium_t *e)
     }
   }
   
+  /* set to zero */
+  for (i = 0; i < e->p->n[CONDENSED]+1; i++) // column
+  {
+    for (j = 0; j < e->p->n[CONDENSED]; j++) // row
+    {
+      matrix[j + e->n_element ][i + e->n_element] = 0;
+    }
+  }
+
   // right side
   for (j = 0; j < e->p->n[CONDENSED]; j++) // row
   {
-    matrix[ j + e->n_element ][ e->n_element + e->p->n[CONDENSED] + 1] = 
+    matrix[ j + e->n_element ][ e->n_element + e->p->n[CONDENSED] + 1] =
       gibbs( e->p->species[CONDENSED][j], CONDENSED, e->p->coef[CONDENSED][j],
-	     e->n, e->T, e->P);  
+    	     e->n, e->T, e->P);  
   }
 
   // third big row
@@ -729,8 +774,7 @@ int fill_matrix(double **matrix, equilibrium_t *e)
   }
 
   // delta ln(n)
-
-  matrix[ e->n_element + e->p->n[CONDENSED] ][ e->n_element + e->p->n[CONDENSED] ]
+  matrix[e->n_element + e->p->n[CONDENSED]][e->n_element + e->p->n[CONDENSED]]
     =  mol - e->n;
 
   // right side
@@ -748,15 +792,92 @@ int fill_matrix(double **matrix, equilibrium_t *e)
   return 0;
 }
 
+
+int remove_condensed(int *size, int *n, equilibrium_t *e)
+{
+
+  int i;
+
+  int r = 0;
+
+  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  {
+    if (e->p->coef[CONDENSED][i] <= 0.0)
+    {
+      printf("%s should be remove\n", 
+	     (thermo_list + e->p->species[CONDENSED][i])->name );
+      /* remove from the list */
+      e->p->species[CONDENSED][i] = 
+	e->p->species[CONDENSED][(*n) - 1];
+      (*n)--;
+      e->p->n[CONDENSED]--;
+      (*size)--;
+      r = 1;
+    }
+  }
+  /* 0 if none remove */
+  return r;
+}
+
+int include_condensed(equilibrium_t *e, int *n, int *size,
+		      double **matrix, double *sol)
+{
+  double tmp;
+  double temp;
+  int i, j, k;
+  int pos;
+
+  tmp = 0.0;
+  j   = -1;
+
+  for (i = e->p->n[CONDENSED]; i < (*n); i++)
+  {
+    temp = 0.0;
+    for (k = 0; k < e->n_element; k++)
+      temp += sol[k]*product_element_coef(e->element[k], 
+					  e->p->species[CONDENSED][i]);
+
+    if ( gibbs0( e->p->species[CONDENSED][i], e->T) - temp < tmp )
+    {
+      tmp = gibbs0( e->p->species[CONDENSED][i], e->T) - temp;
+      j = i; 
+    }
+  }
+
+  if (!(j == -1))
+  {
+    printf("%s should be include\n", 
+	   (thermo_list + e->p->species[CONDENSED][j])->name );
+
+    /* to include the species, exchange the value */
+    pos = e->p->species[CONDENSED][ e->p->n[CONDENSED] ];
+    e->p->species[CONDENSED][ e->p->n[CONDENSED] ] = 
+      e->p->species[CONDENSED][j];
+    e->p->species[CONDENSED][j] = pos;
+	
+    e->p->n[CONDENSED]++;
+    
+    /* realloc the memory for matrix and sol */
+    /* the size of the coefficient matrix */
+    (*size) = e->n_element + e->p->n[CONDENSED] + 1;
+  
+    printf("size: %d\n", *size);
+
+    return 1;
+  }
+
+  return 0;
+}
+
 int equilibrium(equilibrium_t *equil)
 {
 
   int       size;
   double ** matrix;
   double  * sol;
-  
-  int    convergence_ok;
+  int       convergence_ok;
 
+  /* control factor */
   double lambda1;
   double lambda2; 
   double lambda;
@@ -767,9 +888,19 @@ int equilibrium(equilibrium_t *equil)
 
   int i, j, k;
 
+  double tmp;
+  int    n_condensed;
+  int    pos;
+
+
   list_element(equil);
   list_product(equil);
 
+  n_condensed = equil->p->n[CONDENSED];
+
+  /* initially, we do not consider the condensed */
+  equil->p->n[CONDENSED] = 0;
+  equil->n = 0.1; /* initial estimate of the mol number */
 
   /* the size of the coefficient matrix */
   size = equil->n_element + equil->p->n[CONDENSED] + 1;
@@ -783,27 +914,46 @@ int equilibrium(equilibrium_t *equil)
   sol = (double *) calloc (size, sizeof(double));
 
 
-  /* initially, we do not consider the condensed */
-  equil->p->n[CONDENSED] = 0;
-  equil->n = 0.1; /* initial estimate of the mol number */
-
-
 
   mol = 0.0;
   for (i = 0; i < equil->p->n[GAS]; i++)
     mol += equil->p->coef[GAS][i];
 
-  for (k = 0; k < 30; k ++)
+  for (k = 0; k < iteration_max; k++)
   {
 
     fill_matrix(matrix, equil);
-    print_matrix(matrix, size);
-    lu(matrix, sol, size);
-    print_vec(sol, size);
+
+    if (equil->verbose > 1)
+      print_matrix(matrix, size);
+
+    if ( lu(matrix, sol, size) == -1)
+    {
+      printf("The matrix is singular, removing excess condensed.\n");
+      /* remove undesired condensed */
+      if (!remove_condensed(&size, &n_condensed, equil))
+      {
+	printf("None remove. Try reinserting remove gazes\n");
+	for ( i = 0; i < equil->p->n[GAS]; i++)
+	{
+	  if (equil->p->coef[GAS][i] == 0.0)
+	    equil->p->coef[GAS][i] = 1e-6;
+	}
+	k = -1;
+	continue;	
+      }
+      printf("size: %d\n", size);
+      k = -1;
+      continue;
+    }
+
+
+    if (equil->verbose > 1)
+      print_vec(sol, size);
 
   
     /* compute the values of delta ln(nj) */
-    equil->delta_ln_n = sol[ equil->n_element + equil->p->n[CONDENSED] ]; /* ok */
+    equil->delta_ln_n = sol[ equil->n_element + equil->p->n[CONDENSED] ];
 
     for (i = 0; i < equil->p->n[GAS]; i++)
     {
@@ -823,15 +973,14 @@ int equilibrium(equilibrium_t *equil)
       if ((equil->delta_ln_nj[i] < 0) && (equil->p->coef[GAS][i] == 0))
 	equil->delta_ln_nj[i] = 0;
 
-      //printf("delta ln(nj): %f\n", equil->delta_ln_nj[i]);
     }
 
     /* compute the control factor lambda */
     lambda1 = 0.0;
     for (i = 0; i < equil->p->n[GAS]; i++)
     {
-      if ((equil->p->coef[GAS][i]/equil->n > 1e-8) && 
-	  (equil->delta_ln_nj[i]>0))
+      if ((equil->p->coef[GAS][i]/equil->n > conc_tol) && 
+	  (equil->delta_ln_nj[i] > 0))
 	lambda1 = max( lambda1, fabs(equil->delta_ln_n), 
 		       fabs(equil->delta_ln_nj[i]));
     }
@@ -840,7 +989,7 @@ int equilibrium(equilibrium_t *equil)
     lambda2 = 1e12;
     for (i = 0; i < equil->p->n[GAS]; i++)
     {
-      if ((equil->p->coef[GAS][i]/equil->n <= 1e-8) && 
+      if ((equil->p->coef[GAS][i]/equil->n <= conc_tol) && 
 	  (equil->delta_ln_nj[i]>0))
 	lambda2 = min(lambda2, fabs( ((-log(equil->p->coef[GAS][i]/equil->n) 
 				       - 9.2103404)/(equil->delta_ln_nj[i] - 
@@ -852,50 +1001,51 @@ int equilibrium(equilibrium_t *equil)
     
   
     /* compute the new value for nj (gazeous) */
-
-    printf("Result\n");
-    printf(" \t nj/n \t\t Delta ln(nj)\n");
+    
+    if (equil->verbose > 1)
+      printf(" \t  nj/n \t\t  Delta ln(nj)\n");
     for (i = 0; i < equil->p->n[GAS]; i++)
     {
       tmplog = log(equil->p->coef[GAS][i]) + lambda*equil->delta_ln_nj[i];
       
-      if ( (tmplog - log(equil->n)) <= log(1e-8))
+      if ( (tmplog - log(equil->n)) <= log(conc_tol))
 	equil->p->coef[GAS][i] = 0.0;
       else
 	equil->p->coef[GAS][i] = exp(tmplog);
       
-      printf("%s \t % .4e \t % .4e\n", 
-	     (thermo_list + equil->p->species[GAS][i])->name, 
-	     equil->p->coef[GAS][i]/equil->n,
-	     equil->delta_ln_nj[i]);
+      if (equil->verbose > 1)
+	if (!(equil->p->coef[GAS][i] == 0))
+	  printf("%s \t % .4e \t % .4e\n", 
+		 (thermo_list + equil->p->species[GAS][i])->name, 
+		 equil->p->coef[GAS][i]/equil->n,
+		 equil->delta_ln_nj[i]);
     }
     
 
     /* compute the new value for nj (condensed) */
-    //  for (i = 0; i < equil->p->n[CONDENSED]; i++)
-    //  {
-    //    equil->p->coef[CONDENSED][i] = equil->p->coef[CONDENSED][i] + 
-    //      lambda*sol[n_elements + i];
-    //    printf("Condensed: %f\n", equil->p->coef[CONDENSED][i]);
-    //  }
+    for (i = 0; i < equil->p->n[CONDENSED]; i++)
+    {
+      equil->p->coef[CONDENSED][i] = equil->p->coef[CONDENSED][i] + 
+	lambda*sol[equil->n_element + i];
+      /* molar fraction of condensed species */
+      printf("%s: \t %f\n", 
+	     (thermo_list + equil->p->species[CONDENSED][i])->name, 
+	     equil->p->coef[CONDENSED][i]/equil->n);
+    }
     
     /* new value of n */
     equil->n = exp( log(equil->n) + lambda*equil->delta_ln_n );
     
     
-    printf("n = %f\n", equil->n);
-
-
     mol = 0.0;
     for (i = 0; i < equil->p->n[GAS]; i++)
       mol += equil->p->coef[GAS][i];
 
-    printf("mol = %f\n", mol);
     
     // check for convergence 
     for (i = 0; i < equil->p->n[GAS]; i++)
     {
-      if (!(equil->p->coef[GAS][i]*fabs(equil->delta_ln_nj[i])/mol <= 0.5e-5))
+      if (!(equil->p->coef[GAS][i]*fabs(equil->delta_ln_nj[i])/mol <=conv_tol))
 	convergence_ok = 0;
       
     }
@@ -903,24 +1053,56 @@ int equilibrium(equilibrium_t *equil)
     for ( i = 0; i < equil->p->n[CONDENSED]; i++ )
     {
     /* test for the condensed phase */
+      if (!(sol[equil->n_element+1]/mol <= conv_tol))
+	convergence_ok = 0;
     }
-    if (!(fabs(equil->delta_ln_n) <= 0.5e-5))
+
+    if (!(fabs(equil->delta_ln_n) <= conv_tol))
       convergence_ok = 0;
     
+
     if (convergence_ok)
-      {
+    {
       printf("The solution has converge in %d iteration\n\n", k);
-      break;
+      //print_product_composition(equil);
+
+      /* remove undesired condensed */
+      if (remove_condensed(&size, &n_condensed, equil))
+      	convergence_ok = 0;
+      
+      /* find if a new condensed species should be include */
+      if ( include_condensed(equil, &n_condensed, &size, matrix, sol) )
+      {
+	free(matrix);
+	free(sol);
+	// allocate the memory for the matrix
+	matrix = (double **) malloc (sizeof(double *) * size);
+	for (i = 0; i < size; i++)
+	  matrix[i] = (double *) malloc (sizeof(double) * (size+1));
+	
+	// allocate the memory for the solution vector
+	sol = (double *) malloc (sizeof(double) * size);
+	
+	k = -1;
+	continue; /* begin a new loop */
       }
+
+      if (convergence_ok)
+	break;
+      k = -1;
+      continue;
+    }
     else
-      printf("The solution doesn't converge\n\n");
+      if (equil->verbose > 1)
+	printf("The solution doesn't converge\n\n");
     
     /* suppose that it will converge the next time */
     convergence_ok = 1;
     
-    /* remove undesired condensed species */
-    
   }
+
+  print_product_composition(equil);
+
   free(sol);
   free (matrix);
   return 0;
@@ -938,7 +1120,7 @@ int main(int argc, char *argv[])
   initialize_equilibrium(equil);
 
   /* set the state for equil, temperature, pressure */
-  set_state(equil, 1500, 1);
+  set_state(equil, 1000, 50);
 
 
   /* allocate memory to hold data */
@@ -953,18 +1135,22 @@ int main(int argc, char *argv[])
 
 
 
-  add_in_propellant(equil, 685, 2); // O2
-  add_in_propellant(equil, 458, 2); // H2
+  //add_in_propellant(equil, 685, 2); // O2
+  //add_in_propellant(equil, 458, 2); // H2
 
   //add_in_propellant(equil, 963, 1); // UDMH
   //add_in_propellant(equil, 436, 1); // HYDRAZINE N2H4
   //add_in_propellant(equil, 378, 2); // F2
 
-  //add_in_propellant(equil, 766, 2); // KClO4
-  //add_in_propellant(equil, 788, 2); // HTPB
+  add_in_propellant(equil, 766, 2); // KClO4
+  add_in_propellant(equil, 788, 2); // HTPB
 
+  //add_in_propellant(equil, 765, 2); // KNO3
+  //add_in_propellant(equil, 840, 2); // table sugar H22C12O11
+  //add_in_propellant(equil, 210, 2); // C
+
+  set_verbose(equil, 1);
   
-
   equilibrium(equil);
 
 
