@@ -1,6 +1,6 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
+/* $Id: thermo.c,v 1.2 2000/08/06 00:19:14 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -406,11 +406,17 @@ int compute_density(composition_t *c)
   
   for (i = 0; i < c->ncomp; i++)
   {
-    c->density += c->coef[i] * propellant_molar_mass(c->molecule[i])
-      / (mass * (propellant_list + c->molecule[i])->density);
+    if ((propellant_list + c->molecule[i])->density != 0.0)
+    {
+      c->density += c->coef[i] * propellant_molar_mass(c->molecule[i])
+        / (mass * (propellant_list + c->molecule[i])->density);
+    }
   }
-
-  c->density = 1/c->density;
+  
+  if (c->density != 0.0)
+  {
+    c->density = 1/c->density;
+  }
 
   return 0;
 }

@@ -1,5 +1,9 @@
-The following entrie have been add to propellant.dat.
-The following text is the original references by R.Nakka
+The data contain in thermo.dat come from the NASA Gleen research center
+and was provide by Bonnie McBride.
+
+The file propellant.dat come from the package of propep.
+The following entrie have been add to propellant.dat by R.Nakka.
+
 --------------------------------------------------------
 
 PEPCODED.DAF file revision 1.0 by R.Nakka  7 Nov. 1999
@@ -17,4 +21,4 @@ References:
 1093,1094,1098:  NIST WebBook  http://webbook.nist.gov/chemistry
 1095-1097:       Journal of Pyrotechnics, Issue No.9 (1999)
 
- 
+
