@@ -4,7 +4,7 @@
 #include "num.h"
 
 /* LU-Factorisation, Doolittle's method */
-int lu(double *matrix, double *solution, int neq)
+int NUM_lu(double *matrix, double *solution, int neq)
 {
   int i, j, s;
   double tmp = 0.0;
@@ -106,4 +106,39 @@ int lu(double *matrix, double *solution, int neq)
   free (L);
   free (U);
   return 0;      
+}
+
+/* This function will divide each row of the matrix
+ * by the highest element of this row.
+ * This kind of scaling could improve precision while
+ * solving some difficult matrix.
+ */
+int NUM_matscale(double *matrix, int neq)
+{
+  int i; /* line */
+  int j; /* column */
+
+  double val;
+  double tmp;
+  
+  for (i = 0; i < neq; i++)
+  {
+    val = 0;
+    /* find the highest value */
+    for (j = 0; j < neq; j++)
+    {
+      tmp = abs(matrix[i + neq*j]);
+      val = (tmp > val) ? tmp : val;
+    }
+
+    /* divide element of the line by this value
+     * including the right side  */
+    if (val == 0)
+      return -1;
+    
+    for (j = 0; j < neq+1; j++)
+      matrix[i + neq*j] = matrix[i + neq*j]/val;
+  }
+  return 0;
+
 }

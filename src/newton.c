@@ -1,8 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 
-double newton(double (*f)(double x), double (*df)(double x), double x0,
-              int nmax, double epsilon)
+double NUM_newton(double (*f)(double x), double (*df)(double x), double x0,
+                  int nmax, double epsilon)
 {
 
   int i = 0;

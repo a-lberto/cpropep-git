@@ -40,30 +40,39 @@ double g1(double x);
 int main(void)
 {
 
-  /*
+  int i, n;
+  double *ans;
+  double *ic;  
+
   double *matrix;
   double *solution;
+
+  int size = 3;
+
+  printf("Testing the LU factorisation algotythm.\n");
+  matrix = (double *) malloc (sizeof(double)*size*(size+1));
+  solution = (double *) malloc (sizeof(double)*size);
   
-  matrix = (double *) malloc (sizeof(double)*12);
-  solution = (double *) malloc (sizeof(double)*3);
-  
-  matrix[0] = 1;
+  matrix[0] = 0;
   matrix[1] = 1;
-  matrix[2] = 9;
-  matrix[3] = -1;
-  matrix[4] = 1;
-  matrix[5] = 3;
+  matrix[2] = 3;
+  matrix[3] = 2;
+  matrix[4] = 0;
+  matrix[5] = 0;
   matrix[6] = 1;
-  matrix[7] = 1;
+  matrix[7] = 0;
   matrix[8] = 1;
-  matrix[9] = 6;
-  matrix[10] = 2;
-  matrix[11] = 22;
+  matrix[9] = -2/3;
+  matrix[10] = 5/2;
+  matrix[11] = 1;
 
-  lu(matrix, solution, 3);
+  //NUM_matscale(matrix, size);
+  NUM_print_matrix(matrix, size);
 
-  print_vec(solution, 3);
-  */
+  NUM_lu(matrix, solution, size);
+
+  NUM_print_vec(solution, size);
+
 /*
   printf("Secante\n");
   printf("Solution: %f\n",  sec(f, -15, 0, 100, 0.0001));
@@ -76,30 +85,26 @@ int main(void)
 
   //printf("epsilon: %.16e\n", epsilon());
 */  
-  int i;
 
-  double *ans;  
-  double *ic;
+  printf("\nTesting the RK4 and RKF algorythm.\n");
   
-  ic = (double *)malloc(sizeof(double) * 4);
+  ic = (double *) malloc(sizeof(double) * 4);
   
   ic[0] = 0;
   ic[1] = 100;
   ic[2] = 0;
   ic[3] = 10;
 
-  ans = (double *) malloc(sizeof(double) * 4 * 101);
-  
-  rk4 (function, 4, 0.1, 10, ic, ans, NULL);
+  /* it return the length of the answer vector */
+  //n = NUM_rk4 (function, 4, 0.1, 10, ic, &ans, NULL);
 
-  for( i = 0; i < 100; i++)
+  n = NUM_rkf (function, 4, 0.1, 20, ic, &ans, 1e-4, NULL);
+  
+  for( i = 0; i < n; i++)
   {
-    printf("%f  %f %f %f %f\n", i*0.1, ans[4*i], ans[1+4*i], 
-	   ans[2 + 4*i], ans[3 + 4*i]);  
+    printf("%f  %f  %f  %f  %f\n", ans[4 + 5*i], ans[5*i],
+           ans[1+5*i], ans[2 + 5*i], ans[3 + 5*i]);  
   }
-  
-  //return 0;
-
 
   free(ic);
   free(ans);
@@ -135,7 +140,12 @@ int function(int neq, double time, double *y, double *dy,
   dy[1] = -9.8;
   dy[2] = y[3];
   dy[3] = 0;
-
+/*
+  if (time < 10)
+    dy[0] = 9.8 - (13.0/70.0)*y[0];
+  else
+    dy[0] = 9.8 - (50.0/70.0)*y[0];
+*/
   return 0;
 }
 

@@ -4,8 +4,8 @@
 /* Resolution of non-linear equation of the for
    f(x) = 0 with the secante method which is a modified
    newton method using secante instead of derivative */
-double sec(double (*f)(double x), double x0, double x1, int nmax,
-           double epsilon)
+double NUM_sec(double (*f)(double x), double x0, double x1, int nmax,
+               double epsilon)
 {
   int i = 0;
   double x2;

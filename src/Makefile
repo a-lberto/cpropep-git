@@ -26,7 +26,7 @@ $(LIBNUM): $(LIBOBJS)
 	ranlib $@
 	mv $(LIBNUM) ../lib/
 
-$(PROG): $(OBJS)
+$(PROG): $(LIBNUM) $(OBJS) 
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
 
 

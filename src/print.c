@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "num.h"
 
-int print_square_matrix(double *matrix, int neq)
+int NUM_print_square_matrix(double *matrix, int neq)
 {
   int i = 0;
   int j = 0;
@@ -17,7 +17,7 @@ int print_square_matrix(double *matrix, int neq)
   return 0;
 }
 
-int print_matrix(double *matrix, int neq)
+int NUM_print_matrix(double *matrix, int neq)
 {
   int i = 0;
   int j = 0;
@@ -32,7 +32,7 @@ int print_matrix(double *matrix, int neq)
   return 0;
 }
 
-int print_vec(double *vec, int neq)
+int NUM_print_vec(double *vec, int neq)
 {
   int i;
   for (i = 0; i < neq; i++)

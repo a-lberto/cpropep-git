@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 
-double ptfix(double (*f)(double x), double x0, double nmax, double epsilon)
+double NUM_ptfix(double (*f)(double x), double x0, double nmax, double epsilon)
 {
   
   int i = 0;
