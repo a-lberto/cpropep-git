@@ -1,5 +1,5 @@
 /* lu.c  -  PA = LU factorisation with pivoting
- * $Id: lu.c,v 1.3 2000/10/20 20:17:20 antoine Exp $
+ * $Id: lu.c,v 1.4 2001/02/22 19:47:37 antoine Exp $
  * Copyright (C) 2000
  *    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>
  *
@@ -49,7 +49,7 @@ int NUM_lu(double *matrix, double *solution, int neq)
   /* LU Factorisation */
 
   for (i = 0; i < neq - 1; i++) /* line */
-  {    
+  {
     for (j = i; j < neq; j++) /* column */
     {  
       tmp = 0.0;
@@ -64,10 +64,10 @@ int NUM_lu(double *matrix, double *solution, int neq)
     idx = i;
     for (j = i; j < neq; j++)
     {
-      if (big < matrix[i + neq*P[j]]) /* we found a larger pivot */
+      if (big < fabs(matrix[i + neq*P[j]])) /* we found a larger pivot */
       {
         idx = j;
-        big = matrix[i + neq*P[j]];
+        big = fabs(matrix[i + neq*P[j]]);
       }
     }
     /* check if we have to interchange the lines */
@@ -78,7 +78,7 @@ int NUM_lu(double *matrix, double *solution, int neq)
       P[idx] = tmp;
     }
 
-    if (matrix[i + neq*P[i]] == 0)
+    if (matrix[i + neq*P[i]] == 0.0)
     {
       printf("LU: matrix is singular, no unique solution.\n");
       return NO_SOLUTION;
@@ -101,9 +101,9 @@ int NUM_lu(double *matrix, double *solution, int neq)
 
   matrix[i + neq*P[i]] = matrix[i + neq*P[i]] - tmp;
 
-  /* End LU-Factorisation */
-
   
+  /* End LU-Factorisation */
+    
   /* substitution  for y    Ly = b*/
   for (i = 0; i < neq; i++)
   {

@@ -1,5 +1,5 @@
 /* num.h - Library of numerical method
- * $Id: num.h,v 1.2 2000/10/20 20:17:18 antoine Exp $
+ * $Id: num.h,v 1.3 2001/02/22 19:47:37 antoine Exp $
  * Copyright (C) 2000
  *    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>
  *
@@ -58,6 +58,7 @@ typedef struct status
  *    october 20, 2000 revision of the permutation method
  */
 int NUM_lu(double *matrix, double *solution, int neq);
+//int old_lu(double *matrix, double *solution, int neq);
 
 /* This function print the coefficient of the matrix to
  * the screen. 
@@ -135,6 +136,12 @@ int NUM_ptfix(double (*f)(double x), double x0,
 int NUM_sysnewton(func_t *Jac, func_t *R, double *x, int nvar,
                   int nmax, double eps);
 
+
+int trapeze(double *data, int n_point, int col, int off, double *integral);
+
+int simpson(double *data, int n_point, int col, int off, double *integral);
+
+int create_spline(double *data, int n_point, double *spline);
 
 #endif
 

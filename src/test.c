@@ -1,5 +1,5 @@
 /* test.c - Testing the functionnality of the various method
- * $Id: test.c,v 1.3 2000/10/20 20:17:20 antoine Exp $
+ * $Id: test.c,v 1.4 2001/02/22 19:47:37 antoine Exp $
  * Copyright (C) 2000
  *    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>
  *
@@ -23,6 +23,7 @@ int test_sysnewton(void);
 int test_sec(void);
 int test_newton(void);
 int test_ptfix(void);
+int test_spline(void);
 
 /* g1(x) = x + 1 - ln(x) */
 double g1(double x) {
@@ -97,8 +98,11 @@ double dr2_dx2(double *x)
 int main(void)
 {
 
+  
   test_lu();
-//  test_rk4();
+  test_spline();
+ 
+  test_rk4();
   test_sysnewton();
 
   test_sec();
@@ -186,37 +190,48 @@ int test_lu(void)
   int i;
   double *matrix;
   double *solution;
-  int size = 4;
+  int size = 8;
   
   printf("Testing the LU factorisation algotythm.\n");
   matrix = (double *) malloc (sizeof(double)*size*(size+1));
   solution = (double *) malloc (sizeof(double)*size);
   
-  matrix[0] = 1;
-  matrix[1] = 1;
-  matrix[2] = 1;
-  matrix[3] = 1;
+  matrix[0] = 4.77088e-02; matrix[8]  = 1.17204e-01; matrix[16] = 1.88670e-02;
+  matrix[1] = 1.17204e-01; matrix[9]  = 4.07815e-01; matrix[17] = 1.25752e-02;
+  matrix[2] = 1.88670e-02; matrix[10] = 1.25752e-02; matrix[18] = 4.40215e-02;
+  matrix[3] = 0.00000e+00; matrix[11] = 0.00000e+00; matrix[19] = 0.00000e+00;
+  matrix[4] = 0.00000e+00; matrix[12] = 0.00000e+00; matrix[20] = 0.00000e+00;
+  matrix[5] = 1.00000e+00; matrix[13] = 0.00000e+00; matrix[21] = 3.00000e+00;
+  matrix[6] = 2.97603e-02; matrix[14] = 8.67031e-02; matrix[22] = 2.51546e-02;
+  matrix[7] = 5.15962e+01; matrix[15] = 1.67940e+02; matrix[23] = -7.46975e+01;
 
-  matrix[4] = 1;
-  matrix[5] = 2;
-  matrix[6] = 1;
-  matrix[7] = 1;
-
-  matrix[8] = 1;
-  matrix[9] = 1;
-  matrix[10] = 0;
-  matrix[11] = -1;
+  matrix[24] = 0.00000e+00;
+  matrix[25] = 0.00000e+00;
+  matrix[26] = 0.00000e+00;
+  matrix[27] = 1.28681e-02;
+  matrix[28] = 0.00000e+00;
+  matrix[29] = 0.00000e+00;
+  matrix[30] = 6.43406e-03;
+  matrix[31] = -7.23674e-01;
   
-  matrix[12] = 1;
-  matrix[13] = 1;
-  matrix[14] = 1;
-  matrix[15] = -1;
+  matrix[32] = 0.0000e+00; matrix[40] = 1.00000e+00; matrix[48] = 2.97603e-02;
+  matrix[33] = 0.0000e+00; matrix[41] = 0.00000e+00; matrix[49] = 8.67031e-02;
+  matrix[34] = 0.0000e+00; matrix[42] = 3.00000e+00; matrix[50] = 2.51546e-02;
+  matrix[35] = 0.0000e+00; matrix[43] = 0.00000e+00; matrix[51] = 6.43406e-03;
+  matrix[36] = 0.0000e+00; matrix[44] = 2.00000e+00; matrix[52] = 0.00000e+00;
+  matrix[37] = 2.0000e+00; matrix[45] = 0.00000e+00; matrix[53] = 0.00000e+00;
+  matrix[38] = 0.0000e+00; matrix[46] = 0.00000e+00; matrix[54] = 1.45616e-02;
+  matrix[39] = 0.0000e+00; matrix[47] =-9.68727e+03; matrix[55] =-3.06747e+01; 
   
-  matrix[16] = 4;
-  matrix[17] = 5;
-  matrix[18] = 3;
-  matrix[19] = 0;
-
+  matrix[56] = 5.15962e+01; matrix[64] =-1.12677e+01;
+  matrix[57] = 1.67940e+02; matrix[65] = 8.29437e+00;
+  matrix[58] =-7.46975e+01; matrix[66] =-7.39145e+01;
+  matrix[59] =-7.23674e-01; matrix[67] =-5.99249e-01;
+  matrix[60] = 0.00000e+00; matrix[68] = 1.58804e-02;
+  matrix[61] =-9.68727e+03; matrix[69] =-9.62706e+03;
+  matrix[62] =-3.06747e+01; matrix[70] =-4.63904e+01;
+  matrix[63] = 4.68590e+05; matrix[71] = 2.37298e+05;
+  
   //NUM_matscale(matrix, size);
   NUM_print_matrix(matrix, size);
 
@@ -224,7 +239,7 @@ int test_lu(void)
     printf("No solution: Error in the numerical method,\n");
   else
     NUM_print_vec(solution, size);
-
+/*
   for (i = 0; i < size; i++)
   {
     if (solution[i] != 1.0)
@@ -232,6 +247,8 @@ int test_lu(void)
       printf("Error found in the solution.\n");
     }
   }
+*/
+  
   printf("\n");
   return 0;
 }
@@ -268,3 +285,53 @@ int test_rk4(void)
 
   return 0;
 }
+
+int test_spline(void)
+{
+  int i;
+  
+  double *data;
+
+  double *spline;
+
+  int size = 10;
+
+  double ans;
+  
+  printf("Testing the spline function.\n\n");
+  data = malloc (2 * size * sizeof(double));
+  spline = malloc (size * sizeof(double));
+  
+  data[0] = 0; /* x0 */
+  data[1] = 55; /* y0 */
+  data[2] = 5; /* x1 */
+  data[3] = 60; /* y1 */
+  data[4] = 10; /* ... */
+  data[5] = 58;
+  data[6] = 15;
+  data[7] = 54;
+  data[8] = 20;
+  data[9] = 55;
+  data[10] = 25;
+  data[11] = 60;
+  data[12] = 30;
+  data[13] = 54;
+  data[14] = 35;
+  data[15] = 57;
+  data[16] = 40;
+  data[17] = 52;
+  data[18] = 45;
+  data[19] = 49;
+  
+  create_spline(data, size, spline);
+
+  for (i = 0; i < 45; i++)
+  {
+    eval_spline(data, spline, size, (double)i, &ans);
+    printf("%d %f\n", i, ans);
+  }
+    
+  printf("Spline test finish\n");
+  return 0;
+}
+

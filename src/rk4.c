@@ -1,5 +1,7 @@
 #include <stdlib.h>
+#include <math.h>
 #include "num.h"
+
 
 int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data), 
             int neq, double step, double duration, double *ic, 
@@ -27,7 +29,7 @@ int NUM_rk4(int (*f)(int neq, double time, double *y, double *dy, void *data),
   K4  = (double *) malloc(sizeof(double) * neq);
 
   /* allocation of the answer vector */
-  length = (int)(duration/step) + 1;
+  length = (int)ceil(duration/step) + 1;
   a = *y = (double *) malloc(sizeof(double) * neq * length);
   
   for (i = 0; i < neq; i++)

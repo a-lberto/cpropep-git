@@ -12,11 +12,9 @@ PROG = test
 OBJS = test.o
 
 LIBOBJS = lu.o rk4.o rkf.o general.o print.o sec.o newton.o ptfix.o\
-          sysnewton.o
+          sysnewton.o trapeze.o simpson.o spline.o
 
 LIBNUM = libnum.a
-
-.SUFFIXES: .c
 
 all: $(LIBNUM) $(PROG)
 
