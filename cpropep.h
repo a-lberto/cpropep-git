@@ -106,9 +106,9 @@ DATE: February 6, 2000
 ****************************************************************/
 typedef struct _composition
 {
-  int ncomp;
-  int molecule[MAX_COMP];
-  float coef[MAX_COMP];
+  int    ncomp;
+  int    molecule[MAX_COMP];
+  double coef[MAX_COMP];
 } composition_t;
 
 
@@ -125,9 +125,43 @@ typedef struct _product
 {
   int    isalloc;              // true if the memory was allocated
   int    n[STATE_LAST];        // number of species for each state
-  int    *species[STATE_LAST]; // list of species for each state
+  int    *species[STATE_LAST]; // list of possible species for each state
   double *coef[STATE_LAST];    // stoechiometric coefficient of each molecule
+
+  int    *condensed_ok;        // list containing the condensed species
+                               // that respect the criterium to be present
 } product_t;
+
+
+/*****************************************************************
+TYPE: Hold important information relative to an equilibrium 
+      calculation
+
+NOTE: 
+
+DATE: February 24, 2000
+******************************************************************/
+typedef struct _equilibrium
+{
+  composition_t *c;           // pointer to a propellant composition
+  product_t     *p;           // pointer to a product struct
+
+  /* list of element in the composition */
+  int  *element;
+  int   n_element;
+
+
+  int is_state_set; /* true if you have set the state */
+  double T;
+  double P;
+
+  int    isequil;             //true when the equilibrium have been compute
+
+  double         n;           // total number of mole
+  double         delta_ln_n;
+  double        *delta_ln_nj; // hold delta ln(nj) for each gazeous species
+} equilibrium_t;
+
 
 
 
@@ -145,15 +179,48 @@ AUTHOR: Antoine Lefebvre
 ***************************************************************/
 int print_thermo_info(int sp);
 
+
+
+/**************************************************************
+FUNCTION: This function allocate the memory for the two global
+          list thermo_list and propellant_list
+
+COMMENTS: It should be call before loading the thermo and
+          the propellant file
+
+AUTHOR: Antoine Lefebvre
+***************************************************************/
+int mem_alloc(void);
+
+
 /*************************************************************
 FUNCTION: Print the content of the respective list with the
           number which refer to the molecule
 
 AUTHOR: Antoine Lefebvre
-        modification bye Mark Pinese
+        modification by Mark Pinese
 **************************************************************/
 int print_thermo_list(void);
 int print_propellant_list(void);
+
+/*************************************************************
+FUNCTION: Print the list of condensed species in the product
+
+PARAMETER: a structure of tupe product_t
+
+AUTHOR: Antoine Lefebvre
+**************************************************************/
+int print_condensed(product_t p);
+
+/*************************************************************
+FUNCTION: Print the list of gazeous species in the product
+
+PARAMETER: a structure of tupe product_t
+
+AUTHOR: Antoine Lefebvre
+**************************************************************/
+int print_gazeous(product_t p);
+
 
 
 /*************************************************************
@@ -177,19 +244,16 @@ FUNCTION: This function search for all elements present in
           the composition and fill the list with the 
 	  corresponding number.
 
-PARAMETER: comp is of type composition_t and hold the information
-           about the propellant composition. list is a pointer
-	   to an integer array.
+PARAMETER: e is of type equilibrium_t and hold the information
+           about the propellant composition.
 
-COMMENTS: It is important that list is big enough to hold
-          all the element, there is no check about how many
-	  memory was allocated.
+COMMENTS: It fill the member element in equilibrium_t
 
 DATE: February 6, 2000
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-int list_element(composition_t comp, int *list);
+int list_element(equilibrium_t *e);
 
 
 /************************************************************
@@ -198,11 +262,7 @@ FUNCTION: This function search in thermo_list for all molecule
 	  in element_list. The function fill product_list with
 	  the corresponding number of these molecule.
 
-PARAMETER: n_element is the number of element in element_list,
-           element_list is the list that was fill with list_element,
-	   product_list is the list that will contain the result.
-	   BE SURE PRODUCT_LIST IS BIG ENOUGH TO HOLD THE DATA,
-	   there will be probably more than 200-300 molecule.
+PARAMETER: e is a pointer to an equilibrium_t structure
 
 COMMENTS: The return value is the number of elements found
 
@@ -210,12 +270,12 @@ DATE: February 6, 2000
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-int list_product(int n_element, int *element_list, product_t *p, float T);
+int list_product(equilibrium_t *e);
 
 
 /*************************************************************
 FUNCTION: Return the enthalpy of the molecule in thermo_list[sp]
-          at the temperature T in K.
+          at the temperature T in K. (Ho/RT)
 
 PARAMETER: sp is the position in the array of the molecule
            T is the temperature in K
@@ -230,7 +290,7 @@ double enthalpy(int sp, float T);
 
 /*************************************************************
 FUNCTION: Return the entropy of the molecule in thermo_list[sp]
-          at the temperature T in K.
+          at the temperature T in K. (So/RT)
 
 PARAMETER: sp is the position in the array of the molecule
            T is the temperature in K
@@ -245,7 +305,7 @@ double entropy(int sp, float T);
 
 /*************************************************************
 FUNCTION: Return the specific heat (Cp) of the molecule in 
-          thermo_list[sp] at the temperature T in K.
+          thermo_list[sp] at the temperature T in K. (Cp/RT)
 
 PARAMETER: sp is the position in the array of the molecule
            T is the temperature in K
@@ -258,6 +318,19 @@ AUTHOR: Antoine Lefebvre
 **************************************************************/
 double specific_heat(int sp, float T);
 
+
+/*************************************************************
+FUNCTION: Return true if the thermochemical data are define for
+          this temperature.
+
+PARAMETER: The same as for entropy
+
+COMMENTS:  It is useful to determine if a specie is present at
+           a given temperature.
+
+AUTHOR: Antoine Lefebvre
+**************************************************************/
+int temperature_check(int sp, float T);
 
 
 /*************************************************************
@@ -276,27 +349,46 @@ AUTHOR: Antoine Lefebvre
 **************************************************************/
 double delta_enthalpy(int sp, float T);
 
+
 /*************************************************************
 FUNCTION: Return the gibbs free energy of the molecule in 
-          thermo_list[sp] at temperature T
+          thermo_list[sp] at temperature T. (uo/RT)
 
 PARAMETER: sp is the position in the array of the molecule
            T is the temperature in K
 
 COMMENTS: g = H - ST where H is the enthalpy, T the temperature
-          and S the entropy, so it call enthalpy(...) end
-	  entropy(...)
+          and S the entropy.
 **************************************************************/
-double gibbs(int sb, state_t st, double nj, double n, float T, float P);
+double gibbs0(int sp, float T);
 
 
+/*************************************************************
+FUNCTION: Return the gibbs free energy of the molecule in 
+          thermo_list[sp] at temperature T, pressure P. (u/RT)
 
-/* give the heat of formation of a propellant in kJ/mol */
+PARAMETER: sp is the position in the array of the molecule
+           T is the temperature in K
+
+COMMENTS: g = uo + ln(nj/n) + ln(P) for gazes
+          g = uo for condensed
+
+AUTHOR: Antoine Lefebvre
+**************************************************************/
+double gibbs(int sp, state_t st, double nj, double n, float T, float P);
+
+
+/***************************************************************
+FUNCTION: Return the heat of formation of a propellant in kJ/mol
+****************************************************************/
 double heat_of_formation(int molecule);
 
-/* give the molar mass of a propellant or pruduct in g/mol */
+/*************************************************************
+FUNCTION: Return the molar mass of a propellant (g/mol)
+
+PARAMETER: molecule is the number in propellant_list
+**************************************************************/
 double propellant_molar_mass(int molecule);
-//double product_molar_mass(int molecule);
 
 
 /**************************************************************
@@ -314,10 +406,99 @@ int initialize_product(product_t *p);
 
 
 /***************************************************************
+FUNCTION: This function initialize the equilibrium structure.
+          The function allocate memory for all the structure
+	  it need. It is important to call dealloc_equilibrium
+	  after.
+
+AUTHOR:   Antoine Lefebvre
+
+DATE: February 27, 2000
+****************************************************************/
+int initialize_equilibrium(equilibrium_t *e);
+
+
+/***************************************************************
+FUNCTION: Dealloc what have been allocated by 
+          initialize_equilibrium
+***************************************************************/
+int dealloc_equillibrium(equilibrium_t *e);
+
+
+/***************************************************************
 FUNCTION: This function free all the pointer allocated in the
           product_t structure bye the initialisaztion
 ***************************************************************/
 int dealloc_product(product_t *p);
+
+/***************************************************************
+FUNCTION: Set the state at which we want to compute the 
+          equilibrium.
+
+PARAMETER: e is a pointer to an equilibrium_t structure
+           T is the temperature in deg K
+	   P is the pressure in atm
+
+AUTHOR:    Antoine Lefebvre
+****************************************************************/
+int set_state(equilibrium_t *e, double T, double P);
+
+
+/***************************************************************
+FUNCTION: Add a new molecule in the propellant
+
+PARAMETER: e is a pointer to the equilibrium_t structure
+           sp is the number of the molecule in the list
+	   mol is the quantity in mol
+
+AUTHOR:    Antoine Lefebvre
+****************************************************************/
+int add_in_propellant(equilibrium_t *e, int sp, double mol);
+
+/***************************************************************
+FUNCTION: Return the stochiometric coefficient of an element
+          in a molecule. If the element isn't present, it return 0.
+
+COMMENTS: There is a different function for the product and for the
+          propellant.
+
+AUTHOR:   Antoine Lefebvre
+****************************************************************/
+int product_element_coef(int element, int molecule);
+int propellant_element_coef(int element, int molecule);
+
+
+/***************************************************************
+FUNCTION: Return the max or the min of three numbers
+****************************************************************/
+double min(double a, double b, double c);
+double max(double a, double b, double c);
+
+/***************************************************************
+FUNCTION: This function fill the matrix in function of the data
+          store in the structure equilibrium_t. The solution
+	  of this matrix give corresction to initial estimate.
+
+COMMENTS: It use the theory explain in 
+          "Computer Program for Calculation of Complex Chemical
+	  Equilibrium Compositions, Rocket Performance, Incident
+	  and Reflected Shocks, and Chapman-Jouguet Detonations"
+	  by Gordon and McBride
+
+AUTHOR:   Antoine Lefebvre
+****************************************************************/
+int fill_matrix(double **matrix, equilibrium_t *e);
+
+
+/****************************************************************
+FUNCTION: This function compute the equilibrium composition at
+          at specific pressure/temperature point. It use fill_matrix
+	  to obtain correction to initial estimate. It correct the 
+	  value until equilibrium is obtain.
+
+AUTHOR:   Antoine Lefebvre
+******************************************************************/
+int equilibrium(equilibrium_t *equil);
 
 #endif
 

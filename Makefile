@@ -21,4 +21,4 @@ $(PROG): $(OBJS)
 
 
 clean:
-	rm *.o *~
+	rm -f *.o *~
