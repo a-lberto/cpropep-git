@@ -61,8 +61,8 @@ FR
 # EQ is used to compute shifting equilibrium performance.
 # The options are the same as for frozen.
 
-EQ
-+chamber_pressure      20.4 atm #136 atm
-+exit_pressure         1   atm
+#EQ
+#+chamber_pressure      20.4 atm #136 atm
+#+exit_pressure         1   atm
 #+supersonic_area_ratio 10 
 #+subsonic_area_ratio   5

@@ -1,5 +1,5 @@
 /* equilibrium.c  -  Responsible of the chemical equilibrium          */
-/* $Id: equilibrium.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
+/* $Id: equilibrium.c,v 1.2 2000/08/31 23:46:10 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -358,11 +358,7 @@ int initial_estimate(equilibrium_t *e)
 }
 */
 
-#ifdef TRUE_ARRAY
 int fill_equilibrium_matrix(double *matrix, equilibrium_t *e, problem_t P)
-#else
-int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
-#endif
 {
 
   short i, j, k;
@@ -427,11 +423,8 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
       for (k = 0; k < p->n[GAS]; k++) {
         tmp += p->A[j][k] * p->coef[GAS][k] * Ho[GAS][k];
       }
-#ifdef TRUE_ARRAY
-      *(matrix + j + size * idx_T) = tmp;
-#else
-      matrix[j][ idx_T ] = tmp;
-#endif
+
+      matrix[j + size * idx_T] = tmp;
     }
   }
 
@@ -455,42 +448,24 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
       tmp += propellant_element_coef(p->element[j],e->propellant.molecule[i]) *
         e->propellant.coef[i] / propellant_mass(e);
 
-#ifdef TRUE_ARRAY
-    *(matrix + j + size * size) = tmp;
-#else
-    matrix[j][size] = tmp; 
-#endif
+    matrix[j + size * size] = tmp;
   }
 
   /* delta ln(T) */
   if (P != TP)
   {
     for (j = 0; j < p->n[CONDENSED]; j++) /* row */
-#ifdef TRUE_ARRAY
-      *(matrix + j + idx_cond + size * idx_T) = Ho[CONDENSED][j];
-#else
-    matrix[ j + idx_cond ][ idx_T] = Ho[CONDENSED][j];
-#endif
-    
+      matrix[j + idx_cond + size * idx_T] = Ho[CONDENSED][j];
   }
   
   /* right side */
   for (j = 0; j < p->n[CONDENSED]; j++) /* row */
   {
-#ifdef TRUE_ARRAY
-    *(matrix + j + idx_cond + size * size) = Mu[CONDENSED][j];
-#else
-    matrix[ j + idx_cond ][size] = Mu[CONDENSED][j];
-#endif
-    
+    matrix[j + idx_cond + size * size] = Mu[CONDENSED][j]; 
   }
 
   /* delta ln(n) */
-#ifdef TRUE_ARRAY
-  *(matrix + idx_n + size * idx_n) = mol - it->n;
-#else
-  matrix[idx_n][idx_n] =  mol - it->n;
-#endif
+  matrix[idx_n + size * idx_n] = mol - it->n;
   
   /* delta ln(T) */
   if (P != TP)
@@ -498,11 +473,8 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     tmp = 0.0;
     for (k = 0; k < p->n[GAS]; k++)
       tmp += p->coef[GAS][k] * Ho[GAS][k];
-#ifdef TRUE_ARRAY
-    *(matrix + idx_n + size * idx_T) = tmp;
-#else
-    matrix[idx_n][idx_T] = tmp;
-#endif
+
+    matrix[idx_n + size * idx_T] = tmp;
     
   }
   
@@ -513,13 +485,8 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     tmp += p->coef[GAS][k] * Mu[GAS][k];
   }
 
-#ifdef TRUE_ARRAY
-  *(matrix + idx_n + size * size) = it->n - mol + tmp;
-#else
-  matrix[idx_n][size] = it->n - mol + tmp;
-#endif
-  
-  
+  matrix[idx_n + size * size] = it->n - mol + tmp;
+    
   /* for enthalpy/pressure problem */
   if (P == HP)
   {
@@ -530,31 +497,20 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
       for (k = 0; k < p->n[GAS]; k++)
         tmp += p->A[i][k] * p->coef[GAS][k] * Ho[GAS][k];
 
-#ifdef TRUE_ARRAY
-      *(matrix + idx_T + size * i) = tmp;
-#else
-      matrix[ idx_T ][i] = tmp;      
-#endif
+      matrix[idx_T + size * i] = tmp;
     }
 
     /* Delta n */
     for (i = 0; i < p->n[CONDENSED]; i++)
-#ifdef TRUE_ARRAY
-      *(matrix + idx_T + size * ( i + idx_cond)) = Ho[CONDENSED][i];
-#else
-      matrix[idx_T][i + idx_cond] = Ho[CONDENSED][i];
-#endif
+      matrix[idx_T + size * ( i + idx_cond)] = Ho[CONDENSED][i];
+
 
     /* Delta ln(n) */
     tmp = 0.0;
     for (k = 0; k < p->n[GAS]; k++)
       tmp += p->coef[GAS][k] * Ho[GAS][k];
 
-#ifdef TRUE_ARRAY
-    *(matrix + idx_T + size * idx_n) = tmp;
-#else
-    matrix[idx_T][idx_n] = tmp;
-#endif
+    matrix[idx_T + size * idx_n] = tmp;
 
     /* Delta ln(T) */
     tmp = 0.0;
@@ -568,11 +524,8 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     for (k = 0; k < p->n[GAS]; k++)
       tmp += p->coef[GAS][k] * Ho[GAS][k] * Ho[GAS][k];
 
-#ifdef TRUE_ARRAY
-    *(matrix + idx_T + size * idx_T) = tmp;
-#else
-    matrix[idx_T][idx_T] = tmp;
-#endif
+    matrix[idx_T + size * idx_T] = tmp;
+
     
     /* right side */
     tmp = 0.0;
@@ -581,11 +534,7 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     for (k = 0; k < p->n[GAS]; k++)
       tmp += p->coef[GAS][k] * Ho[GAS][k] * Mu[GAS][k];
 
-#ifdef TRUE_ARRAY
-    *(matrix + idx_T + size * size) = tmp;
-#else
-    matrix[idx_T][size] = tmp;
-#endif
+    matrix[idx_T + size * size] = tmp;
     
   } /* for entropy/pressure problem */
   else if (P == SP)
@@ -599,35 +548,21 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
           entropy(p->species[GAS][k], GAS, it->ln_nj[k] - it->ln_n, pr->T,
                   pr->P);
       
-#ifdef TRUE_ARRAY
-      *(matrix + idx_T + size * i) = tmp;
-#else
-      matrix[idx_T][i] = tmp;      
-#endif 
+      matrix[idx_T + size * i] = tmp;
     }
     
     /* Delta n */
     for (i = 0; i < p->n[CONDENSED]; i++)
-#ifdef TRUE_ARRAY
-      *(matrix + p->n_element + p->n[CONDENSED] + 1 + size *
-        (i + p->n_element)) = entropy_0( p->species[CONDENSED][i], pr->T);
-#else
-      matrix[idx_T][i + idx_cond] = 
-        entropy_0( p->species[CONDENSED][i], pr->T); /* ok for condensed */
-#endif
+      matrix[idx_T + size * (i + p->n_element)] =
+        entropy_0( p->species[CONDENSED][i], pr->T);
     
-
     /* Delta ln(n) */
     tmp = 0.0;
     for (k = 0; k < p->n[GAS]; k++)
       tmp += p->coef[GAS][k] * entropy(p->species[GAS][k], GAS, it->ln_nj[k]
                                        - it->ln_n, pr->T, pr->P);
 
-#ifdef TRUE_ARRAY
-    *(matrix + idx_T + size * idx_n) = tmp;
-#else
-    matrix[idx_T][idx_n] = tmp;
-#endif
+    matrix[idx_T + size * idx_n] = tmp;
     
     tmp = 0.0;
     for (k = 0; k < p->n[GAS]; k++)
@@ -641,12 +576,7 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
       tmp += p->coef[GAS][k]*Ho[GAS][k]*
         entropy(p->species[GAS][k], GAS, it->ln_nj[k]-it->ln_n, pr->T, pr->P);
     
-#ifdef TRUE_ARRAY
-    *(matrix + idx_T + size * idx_T) = tmp;
-#else
-    matrix[idx_T][idx_T] = tmp;
-#endif
-    
+    matrix[idx_T + size * idx_T] = tmp;    
     
     /* entropy of reactant */
     tmp = e->entropy; /* assign entropy */
@@ -662,30 +592,20 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
         * entropy(p->species[GAS][k], GAS, it->ln_nj[k] - it->ln_n,
                   pr->T, pr->P);
 
-#ifdef TRUE_ARRAY
-    *(matrix + idx_T + size * size) = tmp;
-#else
-    matrix[idx_T][size] = tmp;
-    
-#endif
-    
+    matrix[idx_T + size * size] = tmp;    
   }
 
   return 0;
 }
 
 /* This part of the matrix is the same for equilibrium and derivative */
-#ifdef TRUE_ARRAY
 int fill_matrix(double *matrix, equilibrium_t *e, problem_t P)
-#else
-int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
-#endif
 {
 
   short i, j, k, size;
   double tmp;
 
-  product_t       *p  = &(e->product);
+  product_t *p  = &(e->product);
 
   short idx_cond, idx_n, idx_T;
   
@@ -709,11 +629,8 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
       {
         tmp += p->A[j][k] * p->A[i][k] * p->coef[GAS][k]; 
       }
-#ifdef TRUE_ARRAY
-      *(matrix + j + size * i) = tmp;
-#else
-      matrix[j][i] = tmp;
-#endif 
+
+      matrix[j + size * i] = tmp;
     }
   }
   
@@ -722,13 +639,8 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   {
     for (j = 0; j < p->n_element; j++) /* row */
     {
-#ifdef TRUE_ARRAY
-      *(matrix + j + size * (i + idx_cond)) = 
-        product_element_coef(p->element[j], p->species[CONDENSED][i]);
-#else
-      matrix[j][i + idx_cond ] =
-        product_element_coef(p->element[j], p->species[CONDENSED][i]);
-#endif 
+      matrix[j + size * (i + idx_cond)] = 
+        product_element_coef(p->element[j], p->species[CONDENSED][i]); 
     }
   } 
 
@@ -740,11 +652,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     {
       tmp += p->A[j][k] * p->coef[GAS][k];
     }
-#ifdef TRUE_ARRAY
-    *(matrix + j + size * idx_n) = tmp;
-#else
-    matrix[j][idx_n] = tmp;
-#endif
+    matrix[j + size * idx_n] = tmp;
   }
    
   /* second row */
@@ -753,12 +661,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     for (j = 0; j < p->n[CONDENSED]; j++) /* row */
     {
       /* copy the symetric part of the matrix */
-#ifdef TRUE_ARRAY
-      *(matrix + j + idx_cond + size * i) =
-        *(matrix + i + size * (j + idx_cond));
-#else
-      matrix[j + idx_cond ][i] = matrix[i][j + idx_cond ];
-#endif 
+      matrix[j + idx_cond + size * i] = matrix[i + size * (j + idx_cond)];
     }
   }
   
@@ -767,11 +670,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   {
     for (j = 0; j < p->n[CONDENSED]; j++) /* row */
     {
-#ifdef TRUE_ARRAY
-      *(matrix + j + idx_cond + size * (i + idx_cond)) = 0.0;
-#else
-      matrix[j + idx_cond][i + idx_cond] = 0.0;
-#endif 
+      matrix[j + idx_cond + size * (i + idx_cond)] = 0.0;
     }
   }
   
@@ -779,21 +678,13 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   for (i = 0; i < p->n_element; i++) /* each column */
   {   
     /* copy the symetric part of the matrix */
-#ifdef TRUE_ARRAY
-    *(matrix + idx_n + size * i) = *(matrix + i + size * idx_n);
-#else
-    matrix[idx_n][i] = matrix[i][idx_n];
-#endif
+    matrix[idx_n + size * i] = matrix[i + size * idx_n];
   }
 
   /* set to zero */
   for (i = 0; i < p->n[CONDENSED]; i++) /* column */
   {
-#ifdef TRUE_ARRAY
-    *(matrix + idx_n + size * (i + idx_cond)) = 0.0;
-#else
-      matrix[idx_n][i + idx_cond] = 0.0;
-#endif 
+    matrix[idx_n + size * (i + idx_cond)] = 0.0;
   }
   
   return 0;
@@ -1140,22 +1031,17 @@ bool convergence(equilibrium_t *e, double *sol)
 
 int equilibrium(equilibrium_t *equil, problem_t P)
 { 
-  short       i, j, k;
-  short       size;     /* size of the matrix */
-#ifdef TRUE_ARRAY
+  short   i, j, k;
+  short   size;     /* size of the matrix */
   double *matrix;
-#else
-  double ** matrix;  
-#endif
-  double  * sol;
+  double *sol;
   
-  bool      convergence_ok;
-  bool      stop           = false;
-  bool      gas_reinserted = false;
-  bool      solution_ok    = false;
+  bool convergence_ok;
+  bool stop           = false;
+  bool gas_reinserted = false;
+  bool solution_ok    = false;
 
-  product_t       *p  = &(equil->product);
-//  equilib_prop_t  *pr = &(equil->properties);
+  product_t *p  = &(equil->product);
   
   /* position of the right side of the matrix dependeing on the
      type of problem */
@@ -1208,13 +1094,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   size = equil->product.n_element + equil->product.n[CONDENSED] + roff;
   
   /* allocate the memory for the matrix */
-#ifdef TRUE_ARRAY
   matrix = (double *) malloc (size*(size+1)*sizeof(double));
-#else
-  matrix = (double **) malloc (sizeof(double *) * size);
-  for (i = 0; i < size; i++)
-    matrix[i] = (double *) malloc (sizeof(double) * (size+1));
-#endif
   
   /* allocate the memory for the solution vector */
   sol = (double *) calloc (size, sizeof(double));
@@ -1313,10 +1193,6 @@ int equilibrium(equilibrium_t *equil, problem_t P)
           include_condensed(&size, &(equil->product.n_condensed), equil, sol))
       {
 
-#ifndef TRUE_ARRAY
-        for (i = 0; i < size; i++)
-          free(matrix[i]);
-#endif
         free(matrix);
 
         
@@ -1325,13 +1201,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
         size = equil->product.n_element + equil->product.n[CONDENSED] + roff;
 
         /* allocate the memory for the matrix */
-#ifdef TRUE_ARRAY
         matrix = (double *) malloc(size*(size+1)*sizeof(double));
-#else
-        matrix = (double **) malloc (sizeof(double *) * size);
-        for (i = 0; i < size; i++)
-          matrix[i] = (double *) malloc (sizeof(double) * (size+1));
-#endif
                 
         /* allocate the memory for the solution vector */
         sol = (double *) malloc (sizeof(double) * size);
@@ -1364,11 +1234,6 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   } /* end of main loop */
 
   free (sol);
-
-#ifndef TRUE_ARRAY
-  for (i = 0; i < size; i++)
-    free (matrix[i]);
-#endif
   free (matrix);
   
   if (k == ITERATION_MAX)
@@ -1393,10 +1258,3 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   
   return SUCCESS;
 }
-
-
-
-
-
-
-

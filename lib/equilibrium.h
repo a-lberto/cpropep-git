@@ -1,7 +1,7 @@
 #ifndef equilibrium_h
 #define equilibrium_h
 /* equilibrium.h  -  Calculation of Complex Chemical Equilibrium       */
-/* $Id: equilibrium.h,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
+/* $Id: equilibrium.h,v 1.2 2000/08/31 23:46:10 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -122,13 +122,13 @@ AUTHOR:   Antoine Lefebvre
 ****************************************************************/
 
 
-#ifdef TRUE_ARRAY
+//#ifdef TRUE_ARRAY
 //int fill_equilibrium_matrix(double *matrix, equilibrium_t *e, problem_t P);
 int fill_matrix(double *matrix, equilibrium_t *e, problem_t P);
-#else
+//#else
 //int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P);
-int fill_matrix(double **matrix, equilibrium_t *e, problem_t P);
-#endif
+//int fill_matrix(double **matrix, equilibrium_t *e, problem_t P);
+//#endif
 
 
 /****************************************************************
