@@ -43,4 +43,21 @@ typedef enum
 
 #endif /* define GCC */
 
+#ifdef BORLAND
+
+int StrNCaseCmp(const char *s1, const char *s2, size_t sz);
+
+#define STRNCASECMP StrNCaseCmp
+#define __min(a, b) ( (a) <= (b) ? (a) : (b))
+#define __max(a, b) ( (a) >= (b) ? (a) : (b))
+
+typedef enum
+{
+  false = 0,
+  true  = 1
+} bool;
+
+#endif /* define BORLAND */
+    
+
 #endif	/* !defined(COMPAT_H) */
