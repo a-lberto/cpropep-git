@@ -1,0 +1,185 @@
+/*
+    cgitest.c - Testprogram for cgi.o
+    Copyright (c) 1998,9 by Martin Schulze <joey@infodrom.north.de>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
+ */
+
+/*
+ * Compile with: cc -o cgitest cgitest.c -lcgi
+ */
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <cgi.h>
+
+#include "equilibrium.h"
+#include "load.h"
+
+extern propellant_t  *propellant_list;
+extern thermo_t	     *thermo_list;
+
+s_cgi *cgi;
+
+#define URL "http://www.infodrom.north.de/cgilib/"
+
+void init_equil(void)
+{
+    /* allocate memory to hold data */
+    if (mem_alloc())
+	return ;
+    load_thermo ("/home/antoine/projets/rocket/rocketworkbench/cpropep/thermo.dat");
+    load_propellant ("/home/antoine/projets/rocket/rocketworkbench/cpropep/propellant.dat");
+
+}
+
+void destroy(void)
+{
+    free (propellant_list);
+    free (thermo_list);
+}
+
+int eval_cgi(equilibrium_t *e)
+{
+    int mol = 0;
+
+    char buffer[32];
+    double tmp;
+    double tmp1;
+
+    printf ("<h1>Results</h1>\n\n");
+
+    strncpy(buffer, cgiGetValue(cgi, "temp"), 32);
+    if ( ((tmp = atof(buffer)) != 0) && tmp > 298.15 && tmp < 6000 )
+	e->T = tmp;
+    else 
+	return -1;
+
+
+    strncpy(buffer, cgiGetValue(cgi, "pressure"), 32);
+    if ((tmp = atof(buffer)) != 0)
+	e->P = tmp;
+    else
+	return -1;
+    
+
+    if (strncmp("mol", cgiGetValue(cgi, "select"), 3) == 0)
+	mol = 1;
+
+    strncpy(buffer, cgiGetValue(cgi, "qt1"), 32);
+    tmp = atof(buffer);
+
+    strncpy(buffer,  cgiGetValue(cgi, "ml1"), 32);
+    tmp1 = atof(buffer);
+  
+    if ((tmp != 0) && (tmp1 != 0))
+    {
+	if (mol)
+	    add_in_propellant(e, tmp1, tmp);
+	else
+	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
+    }
+
+    strncpy(buffer, cgiGetValue(cgi, "qt2"), 32);
+    tmp = atof(buffer);
+
+    strncpy(buffer, cgiGetValue(cgi, "ml2"), 32);
+    tmp1 = atof(buffer);
+    
+    if ((tmp != 0) && (tmp1 != 0))
+    {
+	if (mol)
+	    add_in_propellant(e, tmp1, tmp);
+	else
+	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
+    }
+    
+    strncpy(buffer, cgiGetValue(cgi, "qt3"), 32);
+    tmp = atof(buffer);
+
+    strncpy(buffer, cgiGetValue(cgi, "ml3"), 32);
+    tmp1 = atof(buffer);
+
+    if ((tmp != 0) && (tmp1 != 0))
+    {
+	if (mol)
+	    add_in_propellant(e, tmp1, tmp);
+	else
+	    add_in_propellant(e, tmp1, GRAM_TO_MOL(tmp, tmp1));
+    }
+    return 0;
+}
+
+int main (int argc, char **argv, char **env)
+{
+    char *path_info = NULL;
+    
+    equilibrium_t *equil;
+    
+    cgiDebug(0, 0);
+    cgi = cgiInit();
+    
+    init_equil();
+
+    path_info = getenv("PATH_INFO");
+    if (path_info) 
+    {
+	if (!strcmp(path_info, "/list")) 
+	{
+            cgiHeader();
+	    printf("<pre>");
+	    print_propellant_list();
+	    printf("</pre>");
+	    
+	} 
+	else if (!strcmp(path_info, "/equil")) 
+	{
+            cgiHeader();
+
+	    equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
+	    initialize_equilibrium(equil);
+
+	    if (eval_cgi(equil))
+		printf("<b>Error</b>");
+	    else
+	    {
+		printf("<pre>");
+		set_verbose(equil, 1);
+		equilibrium(equil, TP);
+		printf("</pre>");
+	    }
+
+	    dealloc_equillibrium (equil);
+
+	    
+	} 
+	else 
+	{
+	    cgiHeader();
+	    printf("<br>Bad queries<br>");
+	}
+    } 
+    else 
+    {
+	cgiHeader();
+	printf("<br>Bad queries<br>");
+    }
+
+    printf ("\n<hr>\n</body>\n</html>\n");
+
+    destroy();
+    return 0;
+}
