@@ -5,6 +5,7 @@ CC   = gcc
 COPT = -g -Wall
 LIB  = -lcruft -lf2c
 
+DEF = -DLINUX -DLAPACK
 
 PROG = num
 
@@ -16,7 +17,7 @@ LIBNUM = libnum.a
 all: $(PROG) $(LIBNUM)
 
 .c.o:
-	$(CC) $(COPT) -c $*.c -o $*.o
+	$(CC) $(DEF) $(COPT) -c $*.c -o $*.o
 
 $(LIBNUM): libnum.o
 	ar -r $@ libnum.o
@@ -28,3 +29,6 @@ $(PROG): $(OBJS)
 
 clean:
 	rm -f *.o *~
+
+deep-clean: clean
+	rm -f libnum.a num

@@ -21,6 +21,9 @@
 #include <math.h>
 #include "libnum.h"
 
+#define LIBNUM "[LIBNUM]:"
+
+#ifdef LAPACK
 /*from LAPACK */
 extern int dgesv_ (int*, int*, double*, int*, int*, double*, int*, int*);
     
@@ -58,7 +61,7 @@ int matsol(double **matrix, double *solution, int neq)
   
   return 0; 
 } 
-
+#endif
 
 
 int gauss(double **matrix, double *solution, int neq)
@@ -89,7 +92,7 @@ int gauss(double **matrix, double *solution, int neq)
 	/* the matrix is ready for the next step */
 	break;
       }
-      printf("No unique solution exists.\n");
+      printf("%s No unique solution exists.\n", LIBNUM);
       return -1;
     }
     
@@ -107,7 +110,7 @@ int gauss(double **matrix, double *solution, int neq)
   
   if (matrix[neq-1][neq-1] == 0) 
   {
-    printf("No unique solution exists.\n");
+    printf("%s No unique solution exists.\n", LIBNUM);
     return -1;
   }
   else
@@ -141,16 +144,16 @@ int lu(double **matrix, double *solution, int neq)
   double *y;
   
   
-  y = (double *)calloc(neq, sizeof(double));
+  y = (double *) calloc (neq, sizeof(double));
   
-  L = (double **)calloc(neq, sizeof(double*));
-  U = (double **)calloc(neq, sizeof(double*));
+  L = (double **) calloc (neq, sizeof(double*));
+  U = (double **) calloc (neq, sizeof(double*));
   
   
   for (i = 0; i < neq; i++)
   {
-    L[i] = (double *)calloc(neq, sizeof(double));
-    U[i] = (double *)calloc(neq, sizeof(double));
+    L[i] = (double *) calloc (neq, sizeof(double));
+    U[i] = (double *) calloc (neq, sizeof(double));
     solution[i] = 0; /* reset the solution vector */
   }
   
@@ -163,36 +166,36 @@ int lu(double **matrix, double *solution, int neq)
   for (i = 0; i < neq; i++)
   {
     U[0][i] = matrix[0][i];
-	 
+    
     if (i > 0)
     {
       for (j = 1; j <= i; j++)
       {
-	tmp = 0.0;
-	for (s = 0; s < j; s++)
-	  tmp += L[j][s]*U[s][i];
-	
-	U[j][i] = matrix[j][i] - tmp;
+        tmp = 0.0;
+        for (s = 0; s < j; s++)
+          tmp += L[j][s]*U[s][i];
+        
+        U[j][i] = matrix[j][i] - tmp;
       }
     }
-	 
+    
     for (j = i + 1; j < neq; j++)
     {
       if (U[i][i] == 0.0)
       {
-	printf("No unique solution exist.\n");
-	return -1;
+        printf("%s No unique solution exist.\n", LIBNUM);
+        return -1;
       }
       if (i == 0)
-	L[j][i] = matrix[j][i]/U[i][i];
+        L[j][i] = matrix[j][i]/U[i][i];
       
       else
       {
-	tmp = 0.0;
-	for (s = 0; s < i; s++)
-	  tmp += L[j][s]*U[s][i];
-	
-	L[j][i] = (matrix[j][i] - tmp)/U[i][i];
+        tmp = 0.0;
+        for (s = 0; s < i; s++)
+          tmp += L[j][s]*U[s][i];
+        
+        L[j][i] = (matrix[j][i] - tmp)/U[i][i];
       }
     }
   }
@@ -210,11 +213,11 @@ int lu(double **matrix, double *solution, int neq)
   }
   
   /* substitution for x   Ux = y*/
-  for (i = neq-1; i >=0; i--)
+  for (i = neq - 1; i >=0; i--)
   {
     if (U[i][i] == 0.0)
     {
-      printf("No unique solution exist.\n");
+      printf("%s No unique solution exist.\n", LIBNUM);
       return -1;
     }
     
@@ -223,6 +226,16 @@ int lu(double **matrix, double *solution, int neq)
       tmp += U[i][j]*solution[j];
     
     solution[i] = (y[i] - tmp)/U[i][i];
+
+    /* isnan() is probably not available under Windows */
+#ifdef LINUX
+    if ( isnan(solution[i]) )
+    {
+      printf("%s No unique solution exist. NaN in solution.\n", LIBNUM);
+      return -1;
+    }
+#endif
+    
   }
      
   /*print_square_matrix(L, neq);*/

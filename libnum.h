@@ -69,8 +69,9 @@ DATE: February 6, 2000
 ***************************************************************/
 int lu(double **matrix, double *solution, int neq);
 
+#ifdef lapack
 int matsol(double **matrix, double *solution, int neq);
-
+#endif
 
 /**************************************************************
 FUNCTION: This function print the coefficient of the matrix to
