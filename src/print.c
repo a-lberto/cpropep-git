@@ -1,5 +1,5 @@
 /* print.c  -  Output functions           */
-/* $Id: print.c,v 1.1 2000/10/13 19:24:31 antoine Exp $ */
+/* $Id: print.c,v 1.2 2001/02/22 19:49:28 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -19,9 +19,25 @@ char header[][32] = {
   "CHAMBER",
   "THROAT",
   "EXIT" };
-  
+
+char err_message[][64] = {
+  "Error allocating memory",
+  "Error opening file",
+  "Error EOF",
+  "Error memory not allocated",
+  "Error too much product",
+  "Error in equilibrium",
+  "Error bad aera ratio",
+  "Error bad aera ratio type"};
+
 FILE * errorfile;
 FILE * outputfile;
+
+int print_error_message(int error_code)
+{
+  fprintf(errorfile, "%s\n", err_message[-error_code - 1]);
+  return 0;
+}
 
 int print_propellant_info(int sp)
 {
@@ -139,7 +155,7 @@ int print_gazeous(product_t p)
 {
   int i;
   for (i = 0; i < p.n[GAS]; i++)
-    fprintf(outputfile, "%s ", (thermo_list + p.species[GAS][i])->name );
+    fprintf(outputfile, "%s ", (thermo_list + p.species[GAS][i])->name);
   fprintf(outputfile, "\n");
   return 0;
 }
@@ -261,7 +277,7 @@ int print_propellant_composition(equilibrium_t *e)
       if (!((propellant_list + e->propellant.molecule[i])->coef[j] == 0))
         fprintf(outputfile, "%d%s ",
                 (propellant_list + e->propellant.molecule[i])->coef[j],
-                symb[ (propellant_list + e->propellant.molecule[i])->elem[j] ]);
+                symb[(propellant_list + e->propellant.molecule[i])->elem[j]]);
     }
     fprintf(outputfile, "\n");
   }

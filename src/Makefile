@@ -15,8 +15,6 @@ LIBNAME = libcpropep.a
 
 LIBOBJS = equilibrium.o print.o performance.o derivative.o
 
-.SUFFIXES: .c
-
 all: $(LIBNAME)
 
 .c.o:

@@ -1,6 +1,6 @@
 /* performance.c  -  Compute performance caracteristic of a motor
                      considering equilibrium                      */
-/* $Id: performance.c,v 1.1 2000/10/13 19:24:31 antoine Exp $ */
+/* $Id: performance.c,v 1.2 2001/02/22 19:49:28 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese  <pinese@cyberwizards.com.au>                        */
@@ -91,6 +91,8 @@ double compute_temperature(equilibrium_t *e, double pressure, double p_entropy)
 int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
                        double value)
 {
+  int err_code;
+  
   short i;
 
   double sound_velocity;
@@ -109,11 +111,11 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
   /* find the equilibrium composition in the chamber */
   if (!(e->product.isequil))
   {
-    if (equilibrium(e, HP))
+    if ((err_code = equilibrium(e, HP)) != SUCCESS)
     {
       fprintf(outputfile,
               "No equilibrium, performance evaluation aborted.\n");
-      return ERROR;
+      return err_code;
     }
   }
 
@@ -203,7 +205,7 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
       else
       { 
         printf("Aera ratio out of range ( < 1.0 )\n");
-        return 0;
+        return ERR_AERA_RATIO;
       }
     }
     else if (exit_type == SUBSONIC_AREA_RATIO)
@@ -221,12 +223,12 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
       else
       { 
         printf("Aera ratio out of range ( < 1.0 )\n");
-        return 0;
+        return ERR_AERA_RATIO;
       }
     }
     else
     {
-      return ERROR;
+      return ERR_RATIO_TYPE;
     }
     
 
@@ -335,6 +337,7 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
 int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
                          double value)
 {
+  int err_code;
   short i;
   double sound_velocity = 0.0;
   double flow_velocity;
@@ -352,10 +355,10 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
   if (!(e->product.isequil))
     /* if the equilibrium have not already been compute */
   {
-    if (equilibrium(e, HP))
+    if ((err_code = equilibrium(e, HP)) < 0)
     {
       fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
-      return ERROR;
+      return err_code;
     }
   }
 
@@ -379,10 +382,10 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
     t->properties.P = e->properties.P/pc_pt;
 
     /* We must compute the new equilibrium each time */
-    if (equilibrium(t, SP))
+    if ((err_code = equilibrium(t, SP)) < 0)
     {
       fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
-      return ERROR;
+      return err_code;
     }
 
     sound_velocity = sqrt (1000*t->itn.n*R*t->properties.T*
@@ -401,9 +404,8 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
 
   if (i == PC_PT_ITERATION_MAX)
   {
-    fprintf(errorfile,
-   "Throat pressure do not converge in %d iterations. Don't thrust results.\n",
-            PC_PT_ITERATION_MAX);
+    fprintf(errorfile, "Throat pressure do not converge in %d iterations."
+            " Don't thrust results.\n", PC_PT_ITERATION_MAX);
   }
   
   //printf("%d iterations to evaluate throat pressure.\n", i);
@@ -441,7 +443,7 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
       else
       { 
         printf("Aera ratio out of range ( < 1.0 )\n");
-        return 0;
+        return ERR_AERA_RATIO;
       }
     }
     else if (exit_type == SUBSONIC_AREA_RATIO)
@@ -459,12 +461,12 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
       else
       { 
         printf("Aera ratio out of range ( < 1.0 )\n");
-        return 0;
+        return ERR_AERA_RATIO;
       }
     }
     else
     {
-      return ERROR;
+      return ERR_RATIO_TYPE;
     }
 
     
@@ -478,11 +480,11 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
 
       
       /* Find the exit equilibrium */
-      if (equilibrium(ex, SP))
+      if ((err_code = equilibrium(ex, SP)) < 0)
       {
         fprintf(outputfile,
                 "No equilibrium, performance evaluation aborted.\n");
-        return ERROR;
+        return err_code;
       }
       
       sound_velocity = ex->properties.Vson;
@@ -505,9 +507,8 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
 
     if (i == PC_PE_ITERATION_MAX)
     {
-      fprintf(errorfile,
-     "Exit pressure do not converge in %d iteration. Don't thrust results.\n",
-              PC_PE_ITERATION_MAX);
+      fprintf(errorfile, "Exit pressure do not converge in %d iteration."
+              " Don't thrust results.\n", PC_PE_ITERATION_MAX);
     }
     
     //printf("%d iterations to evaluate exit pressure.\n", i);
@@ -520,10 +521,10 @@ int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
   ex->properties.P = exit_pressure;
 
   /* Find the exit equilibrium */
-  if (equilibrium(ex, SP))
+  if ((err_code = equilibrium(ex, SP)) < 0)
   {
     fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
-    return ERROR;
+    return err_code;
   }
   
   flow_velocity = sqrt(2000*(product_enthalpy(e)*R*e->properties.T -

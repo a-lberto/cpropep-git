@@ -1,5 +1,5 @@
 /* equilibrium.c  -  Responsible of the chemical equilibrium          */
-/* $Id: equilibrium.c,v 1.1 2000/10/13 19:24:31 antoine Exp $ */
+/* $Id: equilibrium.c,v 1.2 2001/02/22 19:49:28 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -150,7 +150,7 @@ int list_product(equilibrium_t *e)
                 "Error: Maximum of %d differents product reach.\n",
                 MAX_PRODUCT);
         fprintf(errorfile, "       Change MAX_PRODUCT and recompile!\n");
-        return ERROR;
+        return ERR_TOO_MUCH_PRODUCT;
       }
        
     }
@@ -697,7 +697,8 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
     {
       if (global_verbose > 1)
       {
-        fprintf(outputfile, "%s should be remove, negative concentration.\n", 
+        fprintf(outputfile,
+                "%s should be remove, negative concentration.\n\n", 
                 (thermo_list + p->species[CONDENSED][i])->name );
       }
       
@@ -752,7 +753,7 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
             /* replace the molecule */
             if (global_verbose > 1)
             {
-              fprintf(outputfile, "%s should be replace by %s\n",
+              fprintf(outputfile, "%s should be replace by %s\n\n",
                       (thermo_list + p->species[CONDENSED][i])->name,
                       (thermo_list + p->species[CONDENSED][j])->name);
             }
@@ -767,7 +768,7 @@ int remove_condensed(short *size, short *n, equilibrium_t *e)
             /* add the molecule */
             if (global_verbose > 1)
             {
-              fprintf(outputfile, "%s should be add with %s\n",
+              fprintf(outputfile, "%s should be add with %s\n\n",
                       (thermo_list + p->species[CONDENSED][i])->name,
                       (thermo_list + p->species[CONDENSED][j])->name);
             }
@@ -839,7 +840,7 @@ int include_condensed(short *size, short *n, equilibrium_t *e,
     
     if (global_verbose > 1)
     { 
-      fprintf(outputfile, "%s should be include\n", 
+      fprintf(outputfile, "%s should be include\n\n", 
               (thermo_list + e->product.species[CONDENSED][j])->name );
     } 
     
@@ -920,15 +921,16 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
   
   lambda = _min(1.0, lambda1, lambda2);
   
-  if (global_verbose > 2)
+  if (global_verbose > 3)
   {
-    fprintf(outputfile, "lambda = %.10f, lambda1 = %.10f, lambda2 = %.10f\n",
+    fprintf(outputfile,
+            "lambda  = %.10f\nlambda1 = %.10f\nlambda2 = %.10f\n\n",
             lambda, lambda1, lambda2);
-    fprintf(outputfile, " \t  nj \t\t  ln_nj_n \t Delta ln(nj)\n");
+    fprintf(outputfile, "%-19s  nj \t\t  ln_nj_n \t  Delta ln(nj)\n", "");
     
     for (i = 0; i < p->n[GAS]; i++)
     {
-      fprintf(outputfile, "%s \t % .4e \t % .4e \t % .4e\n", 
+      fprintf(outputfile, "%-19s % .4e \t % .4e \t % .4e\n", 
               (thermo_list + p->species[GAS][i])->name, 
               p->coef[GAS][i], it->ln_nj[i], it->delta_ln_nj[i]);
     }
@@ -960,11 +962,11 @@ int new_approximation(equilibrium_t *e, double *sol, problem_t P)
       lambda*sol[p->n_element + i];     
   }
 
-  if (global_verbose > 2)
+  if (global_verbose > 3)
   {
     for (i = 0; i < p->n[CONDENSED]; i++)
     {
-      fprintf(outputfile, "%s: \t %f\n", 
+      fprintf(outputfile, "%-19s % .4e\n", 
               (thermo_list + p->species[CONDENSED][i])->name, 
               p->coef[CONDENSED][i]);
     }
@@ -1018,7 +1020,9 @@ bool convergence(equilibrium_t *e, double *sol)
 }
 
 int equilibrium(equilibrium_t *equil, problem_t P)
-{ 
+{
+  int err_code;
+  
   short   i, j, k;
   short   size;     /* size of the matrix */
   double *matrix;
@@ -1051,9 +1055,9 @@ int equilibrium(equilibrium_t *equil, problem_t P)
 
   if (!(equil->product.product_listed))
   {
-    if (list_product(equil) == ERROR)
+    if ((err_code = list_product(equil)) < 0)
     {
-      return ERROR;
+      return err_code;
     }
     /* equil->product.n_condensed = equil->product.n[CONDENSED]; */
   }
@@ -1100,9 +1104,9 @@ int equilibrium(equilibrium_t *equil, problem_t P)
       if (global_verbose > 2)
       {
         fprintf(outputfile, "Iteration %d\n", k+1);
-        print_matrix(matrix, size);
+        NUM_print_matrix(matrix, size);
       }
-      if ( lu(matrix, sol, size) == -1) /* solve the matrix */
+      if (NUM_lu(matrix, sol, size) == -1) /* solve the matrix */
       {
         /* the matrix have no unique solution */
         fprintf(outputfile,
@@ -1144,8 +1148,11 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     }
       
     if (global_verbose > 2)
-      print_vec(sol, size);    /* print the solution vector */
-
+    {
+      NUM_print_vec(sol, size);    /* print the solution vector */
+      fprintf(outputfile, "\n");
+    }
+    
     /* compute the new approximation */
     new_approximation(equil, sol, P);
 
@@ -1158,7 +1165,8 @@ int equilibrium(equilibrium_t *equil, problem_t P)
 
       if (global_verbose > 0)
       {
-        fprintf(outputfile, "Convergence: %-2d iteration, %f deg K\n",
+        fprintf(outputfile,
+                "The solution converge in %-2d iterations (%.2f degK)\n",
                 k+1, equil->properties.T);
         //fprintf(outputfile, "T = %f\n", equil->T);
       }
@@ -1226,18 +1234,18 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   
   if (k == ITERATION_MAX)
   {
-    fprintf(outputfile, "\n");
-    fprintf(outputfile, "Maximum number of %d iterations attain\n",
-            ITERATION_MAX);
-    fprintf(outputfile, "Don't thrust results.\n"); 
-    return ERROR;
+    //fprintf(outputfile, "\n");
+    //fprintf(outputfile, "Maximum number of %d iterations attain\n",
+    //        ITERATION_MAX);
+    //fprintf(outputfile, "Don't thrust results.\n"); 
+    return ERR_EQUILIBRIUM;
   }
   else if (stop)
   {
-    fprintf(outputfile, "\n");
-    fprintf(outputfile, "Problem computing equilibrium...aborted.\n");
-    fprintf(outputfile, "Don't thrust results.\n");
-    return ERROR;
+    //fprintf(outputfile, "\n");
+    //fprintf(outputfile, "Problem computing equilibrium...aborted.\n");
+    //fprintf(outputfile, "Don't thrust results.\n");
+    return ERR_EQUILIBRIUM;
   }
 
   equil->product.isequil = true;
@@ -1246,3 +1254,5 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   
   return SUCCESS;
 }
+
+

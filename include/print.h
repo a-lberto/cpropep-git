@@ -12,6 +12,8 @@
 extern FILE * errorfile;
 extern FILE * outputfile;
 
+int print_error_message(int error_code);
+
 /***************************************************************
 FUNCTION: Print the information of a specie in the thermo_list
 
