@@ -17,15 +17,16 @@ Propellant
 #+258   1g       copper
 #+847   1g       sulphur
 #+685   90g      oxygen
-#+788   20g      HTPB
++788   20g      HTPB
 #+771   10g      propane
-#+34    15g      Aluminium
-+1026  20g      Asphalt
++34    15g      Aluminium
+#+1026  20g      Asphalt
 #+375   1g       Ferric oxyde
+#+469    60g      Hydrogen Peroxyde (90%)
 
 #perform a performance evaluation of the propellant
-EQ   2000  100  1 0 0 0
-FR   2000  100  1 0 0 0
+EQ   2000  70  6 0 0 0
+FR   2000  70  6 0 0 0
 #PE  2000  100  1 0 0 0
 #HP   1000  100  1 0 0 0
 #HP  2000  90 1 0 0 0

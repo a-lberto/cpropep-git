@@ -1,6 +1,6 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.8 2000/06/20 02:15:12 antoine Exp $ */
+/* $Id: derivative.c,v 1.9 2000/07/03 03:19:13 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -147,8 +147,7 @@ int derivative(equilibrium_t *e)//, deriv_t *d)
     
   }
 
-  prop->Cv = prop->Cp + e->itn.n * R * pow(prop->dV_T, 2)/prop->dV_P;
-  //d->cp_cv = d->cp/d->cv;
+  prop->Cv    = prop->Cp + e->itn.n * R * pow(prop->dV_T, 2)/prop->dV_P;
   prop->Isex  = -(prop->Cp / prop->Cv) / prop->dV_P;
   prop->Vson  = sqrt(1000 * e->itn.n * R * e->properties.T * prop->Isex);
 

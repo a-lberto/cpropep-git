@@ -25,6 +25,13 @@ typedef enum
   SP           /* assign entropy and pressure */
 } problem_t;
 
+typedef enum
+{
+  SUBSONIC_AREA_RATIO,
+  SUPERSONIC_AREA_RATIO,
+  PRESSURE
+} exit_condition_t;
+
 
 /********************************************
 Note: Specific impulse have unit of m/s
@@ -62,9 +69,10 @@ DATE: February 6, 2000
 ****************************************************************/
 typedef struct _composition
 {
-  short  ncomp;
-  short  molecule[MAX_COMP];
-  double coef[MAX_COMP];
+  short  ncomp;              /* Number of different component */
+  short  molecule[MAX_COMP]; /* Molecule code                 */
+  double coef[MAX_COMP];     /* Moles of molecule             */ 
+  double density;            /* Density of propellant         */
 } composition_t;
 
 

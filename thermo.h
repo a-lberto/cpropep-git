@@ -165,6 +165,9 @@ double product_enthalpy(equilibrium_t *e);
 double product_entropy(equilibrium_t *e);
 double propellant_mass(equilibrium_t *e);
 
+int compute_density(composition_t *c);
+
+
 /*************************************************************
 FUNCTION: Return the gibbs free energy of the molecule in 
           thermo_list[sp] at temperature T. (uo/RT)

@@ -1,5 +1,5 @@
 /* equilibrium.c  -  Responsible of the chemical equilibrium          */
-/* $Id: equilibrium.c,v 1.15 2000/06/20 02:15:12 antoine Exp $ */
+/* $Id: equilibrium.c,v 1.16 2000/07/03 03:19:13 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -1121,7 +1121,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   bool      solution_ok    = false;
 
   product_t       *p  = &(equil->product);
-  equilib_prop_t  *pr = &(equil->properties);
+//  equilib_prop_t  *pr = &(equil->properties);
   
   /* position of the right side of the matrix dependeing on the
      type of problem */

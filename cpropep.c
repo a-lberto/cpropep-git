@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.20 2000/06/20 02:15:12 antoine Exp $ */
+/* $Id: cpropep.c,v 1.21 2000/07/03 03:19:13 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -421,14 +421,14 @@ int main(int argc, char *argv[])
     
     
     load_input(fd, equil, case_list, &exit_pressure);
+
+    compute_density(&(equil->propellant));
     
     fclose(fd);
     global_verbose = v;
-    //set_verbose(equil, v);
 
     list_element(equil);
     list_product(equil);
-    
     
     i = 0;
     while ((case_list[i].p != -1) && (i <= MAX_CASE))
@@ -486,7 +486,8 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(frozen, HP)) break,
                  CHAMBER_MSG);
 
-            TIME(frozen_performance(frozen, exit_pressure),
+            TIME(frozen_performance(frozen, SUPERSONIC_AREA_RATIO,
+                                    exit_pressure),
                  FROZEN_MSG);
             
             print_product_properties(frozen, 3);
@@ -505,7 +506,8 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(shifting, HP)) break,
                  CHAMBER_MSG);
 
-            TIME(equilibrium_performance(shifting, exit_pressure),
+            TIME(equilibrium_performance(shifting, SUPERSONIC_AREA_RATIO,
+                                         exit_pressure),
                  EQUILIBRIUM_MSG);
 
             print_product_properties(shifting, 3);

@@ -6,6 +6,7 @@
 /* Transform pound/cubic inch to gram/cubic centimeter */
 #define LBS_IN3_TO_G_CM3  27.679905
 
+#define ATM_TO_PA         101325
 #define ATM_TO_PSI        14.695949
 #define BAR_TO_PSI        14.503774
 #define ATM_TO_BAR         1.01325  

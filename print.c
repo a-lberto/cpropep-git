@@ -1,3 +1,10 @@
+/* print.c  -  Output functions           */
+/* $Id: print.c,v 1.9 2000/07/03 03:19:13 antoine Exp $ */
+/* Copyright (C) 2000                                                  */
+/*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
+/*    Mark Pinese <pinese@cyberwizards.com.au>                         */
+/*                                                                     */
+/* Licensed under the GPLv2                                            */
 
 #include <stdio.h>
 
@@ -8,7 +15,11 @@
 #include "thermo.h"
 #include "const.h"
 
-
+char header[][32] = {
+  "CHAMBER",
+  "THROAT",
+  "EXIT" };
+  
 FILE * errorfile;
 FILE * outputfile;
 
@@ -135,21 +146,20 @@ int print_gazeous(product_t p)
 
 int print_product_composition(equilibrium_t *e, short npt)
 {
-  int i, j, k;
+  int i, j;//, k;
   
   double mol_g = e->itn.n;
   
   for (i = 0; i < e->product.n[CONDENSED]; i++)
     mol_g += e->product.coef[CONDENSED][i];
   
-  fprintf(outputfile, "Molar fractions\n\n");
+  fprintf(outputfile, "\nMolar fractions\n\n");
   for (i = 0; i < e->product.n[GAS]; i++)
   {
     if (e->product.coef[GAS][i]/e->itn.n > 0.0)
     {
       fprintf(outputfile, "%-20s",
               (thermo_list + e->product.species[GAS][i])->name);
-//              e->product.coef[GAS][i]/mol_g);
 
       for (j = 0; j < npt; j++)
         fprintf(outputfile, " %11.4e", (e+j)->product.coef[GAS][i]/mol_g);
@@ -158,14 +168,20 @@ int print_product_composition(equilibrium_t *e, short npt)
     }
   }
 
+
+  /* check if it is the same condensed for each index */
   if (e->product.n[CONDENSED] > 0)
   {
     fprintf(outputfile, "Condensed species\n");
     for (i = 0; i < e->product.n[CONDENSED]; i++)
     {
-      fprintf(outputfile,   "%-20s %.4e\n",
-              (thermo_list + e->product.species[CONDENSED][i])->name,
-              e->product.coef[CONDENSED][i]/mol_g);
+      fprintf(outputfile,   "%-20s",
+              (thermo_list + e->product.species[CONDENSED][i])->name);
+
+      for (j = 0; j < npt; j++)
+        fprintf(outputfile, " %11.4e", (e+j)->product.coef[CONDENSED][i]/mol_g);
+      fprintf(outputfile,"\n");
+      
     }
   }
   fprintf(outputfile, "\n");
@@ -197,6 +213,7 @@ int print_propellant_composition(equilibrium_t *e)
     }
     fprintf(outputfile, "\n");
   }
+  fprintf(outputfile, "Density : % .3f g/cm^3\n", e->propellant.density); 
 
   if (e->product.element_listed)
   {
@@ -209,8 +226,8 @@ int print_propellant_composition(equilibrium_t *e)
   
   fprintf(outputfile, "Total mass: % f g\n", propellant_mass(e));
   
-  fprintf(outputfile, "Enthalpy  : % .2f Joules\n",
-          propellant_enthalpy(e)*propellant_mass(e));
+  fprintf(outputfile, "Enthalpy  : % .2f kJ/kg\n",
+          propellant_enthalpy(e));
   
   fprintf(outputfile, "\n");
 
@@ -219,7 +236,7 @@ int print_propellant_composition(equilibrium_t *e)
     fprintf(outputfile, "%d possible gazeous species\n", e->product.n[GAS]);
     if (global_verbose > 1)
       print_gazeous(e->product);
-    fprintf(outputfile, "%d possible condensed species\n", e->product.n[CONDENSED]);
+    fprintf(outputfile, "%d possible condensed species\n\n", e->product.n[CONDENSED]);
     if (global_verbose > 1)
       print_condensed(e->product);
   }
@@ -261,7 +278,7 @@ int print_performance_information(equilibrium_t *e, short npt)
     fprintf(outputfile, " % 11.5f", (e+i)->performance.Isp);
   fprintf(outputfile, "\n");
 
-  fprintf(outputfile, "Isg/g (s)        :            ");
+  fprintf(outputfile, "Isp/g (s)        :            ");
   for (i = 1; i < npt; i++)
     fprintf(outputfile, " % 11.5f", (e+i)->performance.Isp/Ge);
   fprintf(outputfile, "\n");
@@ -273,6 +290,11 @@ int print_performance_information(equilibrium_t *e, short npt)
 int print_product_properties(equilibrium_t *e, short npt)
 {
   short i;
+
+  fprintf(outputfile, "                  ");
+  for (i = 0; i < npt; i++)
+    fprintf(outputfile, " %11s", header[i]);
+  fprintf(outputfile, "\n");
   
   fprintf(outputfile, "Pressure (atm)   :");
   for (i = 0; i < npt; i++)
@@ -334,80 +356,3 @@ int print_product_properties(equilibrium_t *e, short npt)
   fprintf(outputfile, "\n");
   return 0;
 }
-
-/*
-int print_performance_information(performance_t *p)
-{
-  
-  if (p->frozen_ok)
-  {
-    fprintf(outputfile,
-            "\n--- Frozen equilibrium performance characteristics. ---\n");
-
-    
-    printf("Ae/At      : %8.3f \t %8.3f\n", 1.0,
-           (p->frozen.exit.temperature *
-            p->frozen.throat.pressure *
-            p->frozen.throat.velocity) /
-           (p->frozen.throat.temperature *
-            p->frozen.exit.pressure *
-            p->frozen.exit.velocity ));
-    printf("C* (m/s)   : %8.3f \t %8.3f\n", 
-           p->frozen.chamber.pressure * p->frozen.throat.aera_dotm,
-           p->frozen.chamber.pressure * p->frozen.throat.aera_dotm);
-    printf("Cf         : %8.3f \t %8.3f\n",
-           p->frozen.throat.velocity /
-           (p->frozen.chamber.pressure * p->frozen.throat.aera_dotm),
-           p->frozen.exit.velocity /
-           (p->frozen.chamber.pressure * p->frozen.throat.aera_dotm));
-    printf("Ivac (m/s) : %8.3f \t %8.3f\n",
-           p->frozen.throat.velocity + p->frozen.throat.pressure
-           * p->frozen.throat.aera_dotm,
-           p->frozen.exit.velocity + p->frozen.exit.pressure
-           * p->frozen.exit.aera_dotm);
-    printf("Isp (m/s)  : %8.3f \t %8.3f\n",
-           p->frozen.throat.velocity, p->frozen.exit.velocity);
-
-
-  }
-
-  if (p->equilibrium_ok)
-  {
-    fprintf(outputfile,
-            "\n--- Shifting equilibrium performance characteristics. ---\n");
-
-    
-    printf("Ae/At      : %8.3f \t %8.3f\n", 1.0,
-           (p->equilibrium.exit.temperature *
-            p->equilibrium.throat.pressure *
-            p->equilibrium.throat.velocity) /
-           (p->equilibrium.throat.temperature *
-            p->equilibrium.exit.pressure *
-            p->equilibrium.exit.velocity ));
-    printf("C* (m/s)   : %8.3f \t %8.3f\n", 
-           p->equilibrium.chamber.pressure * p->equilibrium.throat.aera_dotm,
-           p->equilibrium.chamber.pressure * p->equilibrium.throat.aera_dotm);
-    printf("Cf         : %8.3f \t %8.3f\n",
-           p->equilibrium.throat.velocity /
-           (p->equilibrium.chamber.pressure * p->equilibrium.throat.aera_dotm),
-           p->equilibrium.exit.velocity /
-           (p->equilibrium.chamber.pressure * p->equilibrium.throat.aera_dotm));
-    printf("Ivac (m/s) : %8.3f \t %8.3f\n",
-           p->equilibrium.throat.velocity + p->equilibrium.throat.pressure
-           * p->equilibrium.throat.aera_dotm,
-           p->equilibrium.exit.velocity + p->equilibrium.exit.pressure
-           * p->equilibrium.exit.aera_dotm);
-    printf("Isp (m/s)  : %8.3f \t %8.3f\n",
-           p->equilibrium.throat.velocity, p->equilibrium.exit.velocity);
-    
-
-  }
-
-  return 0;
-}
-*/
-
-
-
-
-

@@ -1,6 +1,6 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.1 2000/06/20 02:17:20 antoine Exp $ */
+/* $Id: thermo.c,v 1.2 2000/07/03 03:19:13 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -372,6 +372,29 @@ int atomic_number(char *symbole)
     }
   }
   return element;
+}
+
+int compute_density(composition_t *c)
+{
+  short i;
+  double mass = 0;
+
+  c->density = 0.0;
+  
+  for (i = 0; i < c->ncomp; i++)
+  {
+    mass += c->coef[i] * propellant_molar_mass(c->molecule[i]);
+  }
+  
+  for (i = 0; i < c->ncomp; i++)
+  {
+    c->density += c->coef[i] * propellant_molar_mass(c->molecule[i])
+      / (mass * (propellant_list + c->molecule[i])->density);
+  }
+
+  c->density = 1/c->density;
+
+  return 0;
 }
 
 /* This fonction return the offset of the molecule in the propellant_list
