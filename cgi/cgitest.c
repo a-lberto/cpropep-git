@@ -47,8 +47,8 @@ s_cgi *cgi;
 void init_equil(void)
 {
     /* allocate memory to hold data */
-  if (mem_alloc())
-    return ;
+//  if (mem_alloc())
+//    return ;
   load_thermo (THERMO_PATH);
   load_propellant (PROPELLANT_PATH);
   
@@ -221,7 +221,8 @@ int main (int argc, char **argv, char **env)
 	    }
       
 	    dealloc_equillibrium (equil);
-          
+      free (equil);
+      
     }
     else if (!strcmp(path_info, "/prop"))
     {

@@ -24,10 +24,13 @@
 
 #include <time.h>
 
-#include "type.h"
+//#include "type.h"
 #include "derivative.h"
 #include "print.h"
 #include "equilibrium.h"
+
+#include "compat.h"
+#include "return.h"
 
 #define TEMP_ITERATION_MAX  8
 
@@ -67,15 +70,15 @@ double mixture_specific_heat_0(equilibrium_t *e, double temp)
   int i;
   double cp = 0.0;
   /* for gases */
-  for (i = 0; i < e->p->n[GAS]; i++)
+  for (i = 0; i < e->p.n[GAS]; i++)
   {
-    cp += e->p->coef[GAS][i]*specific_heat_0(e->p->species[GAS][i], temp);
+    cp += e->p.coef[i][GAS]*specific_heat_0(e->p.species[i][GAS], temp);
   }
   /* for condensed */
-  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  for (i = 0; i < e->p.n[CONDENSED]; i++)
   {
-    cp += e->p->coef[CONDENSED][i]*
-      specific_heat_0(e->p->species[CONDENSED][i], temp);
+    cp += e->p.coef[i][CONDENSED]*
+      specific_heat_0(e->p.species[i][CONDENSED], temp);
   }
   return cp;
 }

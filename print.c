@@ -19,7 +19,7 @@ int print_propellant_info(int sp)
 {
   int j;
 
-  if (sp > MAX_PROPELLANT || sp < 0)
+  if (sp > num_propellant || sp < 0)
     return -1;
   
   printf("Code %-35s Enthalpy  Density  Composition\n", "Name");
@@ -45,7 +45,7 @@ int print_thermo_info(int sp)
   int   i, j;
   thermo_t *s;
 
-  if (sp > MAX_THERMO || sp < 0)
+  if (sp > num_thermo || sp < 0)
     return -1;
 
   s = (thermo_list + sp);
@@ -96,7 +96,7 @@ int print_thermo_info(int sp)
 int print_thermo_list(void)
 {
   int i;
-  for (i = 0; i < MAX_THERMO; i++)
+  for (i = 0; i < num_thermo; i++)
     printf("%-4d %-15s % .2f\n", i, (thermo_list + i)->name,
            (thermo_list + i)->heat);
   
@@ -106,7 +106,7 @@ int print_thermo_list(void)
 int print_propellant_list(void)
 {
   int i;
-  for (i = 0; i < MAX_PROPELLANT; i++)
+  for (i = 0; i < num_propellant; i++)
     printf("%-4d %-30s %5d\n", i, (propellant_list + i)->name,
            (propellant_list +i)->heat);
  
@@ -118,7 +118,7 @@ int print_condensed(product_t p)
 {
   int i;
   for (i = 0; i < p.n[CONDENSED]; i ++)
-    printf("%s ",  (thermo_list + p.species[CONDENSED][i])->name );
+    printf("%s ",  (thermo_list + p.species[i][CONDENSED])->name );
   printf("\n");
   return 0;
 }
@@ -127,7 +127,7 @@ int print_gazeous(product_t p)
 {
   int i;
   for (i = 0; i < p.n[GAS]; i++)
-    printf("%s ", (thermo_list + p.species[GAS][i])->name );
+    printf("%s ", (thermo_list + p.species[i][GAS])->name );
   printf("\n");
   return 0;
 }
@@ -138,20 +138,20 @@ int print_product_composition(equilibrium_t *e)
   
   printf("%.4e mol of gaz\n", e->n);
   printf("molar fraction \t mol \n");
-  for (i = 0; i < e->p->n[GAS]; i++)
+  for (i = 0; i < e->p.n[GAS]; i++)
   {
-    if (e->p->coef[GAS][i]/e->n > CONC_MIN)
+    if (e->p.coef[GAS][i]/e->n > CONC_MIN)
       printf("% .4e \t% .4e \t %s\n", 
-             e->p->coef[GAS][i]/e->n,
-             e->p->coef[GAS][i],
-             (thermo_list + e->p->species[GAS][i])->name);
+             e->p.coef[i][GAS]/e->n,
+             e->p.coef[i][GAS],
+             (thermo_list + e->p.species[i][GAS])->name);
   }
-  if (e->p->n[CONDENSED] > 0)
+  if (e->p.n[CONDENSED] > 0)
     printf("Condensed species (mol)\n");
-  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  for (i = 0; i < e->p.n[CONDENSED]; i++)
   {
-    printf("%s  % .4e\n", (thermo_list + e->p->species[CONDENSED][i])->name,
-           e->p->coef[CONDENSED][i]);
+    printf("%s  % .4e\n", (thermo_list + e->p.species[i][CONDENSED])->name,
+           e->p.coef[i][CONDENSED]);
   }
   printf("\n");
   return 0;
@@ -174,20 +174,20 @@ int print_propellant_composition(equilibrium_t *e)
   
   printf("Propellant composition\n");
   printf("Code %-35s mol    Mass (g)  Composition\n", "Name");
-  for (i = 0; i < e->c->ncomp; i++)
+  for (i = 0; i < e->c.ncomp; i++)
   {
-    printf("%-4d  %-35s %.4f %.4f ", e->c->molecule[i],
-           (propellant_list + e->c->molecule[i])->name,
-           e->c->coef[i], 
-           e->c->coef[i]*propellant_molar_mass( e->c->molecule[i] ) );
+    printf("%-4d  %-35s %.4f %.4f ", e->c.molecule[i],
+           (propellant_list + e->c.molecule[i])->name,
+           e->c.coef[i], 
+           e->c.coef[i]*propellant_molar_mass( e->c.molecule[i] ) );
     
     printf("  ");
     /* print the composition */
     for (j = 0; j < 6; j++)
     {
-      if (!((propellant_list + e->c->molecule[i])->coef[j] == 0))
-        printf("%d%s ", (propellant_list + e->c->molecule[i])->coef[j],
-               symb[ (propellant_list + e->c->molecule[i])->elem[j] ]);
+      if (!((propellant_list + e->c.molecule[i])->coef[j] == 0))
+        printf("%d%s ", (propellant_list + e->c.molecule[i])->coef[j],
+               symb[ (propellant_list + e->c.molecule[i])->elem[j] ]);
     }
     printf("\n");
   }
@@ -212,5 +212,6 @@ int print_derivative_results(deriv_t d)
   printf("Isentropic exponent  : % .2f \n", d.isex);
   return 0;
 }
+
 
 

@@ -25,7 +25,7 @@
 *     25 *      DENSITY IS OPTIONAL BUT IS NECESSARY IF THE VEHICLE           * ]
 *     26 *      PERFORMANCE OPTION IS SELECTED                                * ]
 *     27 ********************************************************************** ]
-+     28                                                                        ]
+*     28                                                                        ]
       29 ACAN  MAE CHAN                  9C  16H  10O   8N   0    0   -776 .1032]
       30 ACETAMIDE                       2C   5H   1O   1N   0    0  -1310 .0360]
       31 ACETYL TRIETHYL CITRATE        22H  14C   8O   0    0    0  -1257 .0408]

@@ -20,12 +20,14 @@
 /* along with this program; if not, write to the Free Software         */
 /* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.           */
 
-
 /**************************************************************
-MACRO: Hold the number of species in for each type data type
+These variables hold the number of records for propellant and thermo data
 ***************************************************************/
-#define MAX_PROPELLANT 1030
-#define MAX_THERMO     1729
+unsigned long num_propellant, num_thermo;
+
+
+//#define MAX_PROPELLANT 1030
+//#define MAX_THERMO     1729
 
 /* MACRO: Number of different molecule in propellant */
 #define MAX_COMP       20
@@ -99,7 +101,7 @@ TYPE: Structure to hold information of species contain in the
 ****************************************************************/
 typedef struct _propellant
 {
-  char  name[30];  /* name of the propellant */
+  char  name[120];  /* name of the propellant */
   int   elem[6];   /* element in the molecule (atomic number) max 6 */
   int   coef[6];   /* stochiometric coefficient of this element 
 		                  (0 for none) */
@@ -143,8 +145,8 @@ typedef struct _product
 {
   int    isalloc;              // true if the memory was allocated
   int    n[STATE_LAST];        // number of species for each state
-  int    *species[STATE_LAST]; // list of possible species for each state
-  double *coef[STATE_LAST];    // stoechiometric coefficient of each molecule
+  int    (*species)[STATE_LAST]; // list of possible species for each state
+  double (*coef)[STATE_LAST];    // stoechiometric coefficient of each molecule
 
   int n_condensed; // number of total possible condensed
   //int    *condensed_ok;        // list containing the condensed species
@@ -164,9 +166,11 @@ typedef struct _equilibrium
 {
   unsigned int  verbose;      /* verbose level */
     
-  composition_t *c;           /* pointer to a propellant composition */
-  product_t     *p;           /* pointer to a product struct */
-
+  //composition_t *c;           /* pointer to a propellant composition */
+  //product_t     *p;           /* pointer to a product struct */
+  composition_t c; 
+  product_t     p;
+  
   /* list of element in the composition */
   int  *element;
   int   n_element;

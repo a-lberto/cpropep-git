@@ -34,6 +34,8 @@
 
 #include "getopt.h"
 
+#include "compat.h"
+#include "return.h"
 
 #define version "1.0"
 #define date    "17/04/2000"
@@ -74,9 +76,9 @@ void info(char **argv) {
 
 void usage(void)
 {
-  printf("Option list\n");
-  printf("-f file \t Input file\n");
-  printf("-v num  \t Set the verbose level\n");
+  printf("Program arguments:\n");
+  printf("-f file \t Perform an analysis of the propellant data in file\n");
+  printf("-v num  \t Verbosity setting, 0 - 10\n");
   printf("-p      \t Print the propellant list\n");
   printf("-t      \t print the combustion product list\n");
 
@@ -196,9 +198,10 @@ int main(int argc, char *argv[])
   p_type p;
   
   /* allocate memory to hold data */
-  if (mem_alloc())
-    return 1;
+//  if (mem_alloc())
+//    return 1;
 
+  global_verbose = 1;
 
   while (1)
   {
@@ -312,6 +315,7 @@ int main(int argc, char *argv[])
           break;
     }
     dealloc_equillibrium (equil);
+    free (equil);
   }
   
   free (propellant_list);

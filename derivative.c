@@ -24,37 +24,37 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
   for (i = 0; i < e->n_element; i++)
   {
     tmp = 0.0;
-    for (j = 0; j < e->p->n[GAS]; j++)
-      tmp += product_element_coef (e->element[i], e->p->species[GAS][j])*
-        e->p->coef[GAS][j]*enthalpy_0(e->p->species[GAS][j], e->T);
+    for (j = 0; j < e->p.n[GAS]; j++)
+      tmp += product_element_coef (e->element[i], e->p.species[j][GAS])*
+        e->p.coef[j][GAS]*enthalpy_0(e->p.species[j][GAS], e->T);
     
     cp += tmp*sol[i];
     
   }
   
-  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  for (i = 0; i < e->p.n[CONDENSED]; i++)
   {
-    cp += enthalpy_0(e->p->species[CONDENSED][i], e->T)
+    cp += enthalpy_0(e->p.species[i][CONDENSED], e->T)
       *sol[i + e->n_element];
   }
   
   tmp = 0.0;
-  for (i = 0; i < e->p->n[GAS]; i++)
+  for (i = 0; i < e->p.n[GAS]; i++)
   {
-    tmp += e->p->coef[GAS][i] * enthalpy_0(e->p->species[GAS][i], e->T);
+    tmp += e->p.coef[i][GAS] * enthalpy_0(e->p.species[i][GAS], e->T);
   }
-  cp += tmp*sol[e->n_element + e->p->n[CONDENSED]];
+  cp += tmp*sol[e->n_element + e->p.n[CONDENSED]];
   
   cp += mixture_specific_heat_0(e, e->T);
   
-  for (i = 0; i < e->p->n[GAS]; i++)
+  for (i = 0; i < e->p.n[GAS]; i++)
   {
-    cp += e->p->coef[GAS][i]*pow(enthalpy_0(e->p->species[GAS][i], e->T),2);
+    cp += e->p.coef[i][GAS]*pow(enthalpy_0(e->p.species[i][GAS], e->T),2);
   }
-  for (i = 0; i < e->p->n[CONDENSED]; i++)
+  for (i = 0; i < e->p.n[CONDENSED]; i++)
   {
-    cp += e->p->coef[CONDENSED][i]*
-      pow(enthalpy_0(e->p->species[CONDENSED][i], e->T),2);
+    cp += e->p.coef[i][CONDENSED]*
+      pow(enthalpy_0(e->p.species[i][CONDENSED], e->T),2);
   }
   return cp;
 }
@@ -74,7 +74,7 @@ int derivative(equilibrium_t *e, deriv_t *d)
   double  * sol;
 
   /* the size of the coefficient matrix */
-  size = e->n_element + e->p->n[CONDENSED] + 1;
+  size = e->n_element + e->p.n[CONDENSED] + 1;
   
   // allocate the memory for the matrix
   matrix = (double **) malloc (sizeof(double *) * size);
@@ -101,7 +101,7 @@ int derivative(equilibrium_t *e, deriv_t *d)
     }
     
     d->cp = mixture_specific_heat(e, sol)*R;
-    d->del_lnV_lnT = 1 + sol[e->n_element + e->p->n[CONDENSED]];
+    d->del_lnV_lnT = 1 + sol[e->n_element + e->p.n[CONDENSED]];
       
   }
 
@@ -118,7 +118,7 @@ int derivative(equilibrium_t *e, deriv_t *d)
       printf("Pressure derivative results.\n");
       print_vec(sol, size);
     }
-    d->del_lnV_lnP = sol[e->n_element + e->p->n[CONDENSED]] - 1;
+    d->del_lnV_lnP = sol[e->n_element + e->p.n[CONDENSED]] - 1;
     
   }
 
@@ -155,31 +155,31 @@ int fill_temperature_derivative_matrix(double **matrix, equilibrium_t *e)
   fill_matrix(matrix, e);
   
   // del ln(n)/ del ln(T)
-  matrix[e->n_element + e->p->n[CONDENSED]][e->n_element + e->p->n[CONDENSED]]
+  matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
 
   // right side
   for (j = 0; j < e->n_element; j++)
   {
     tmp = 0.0;
-    for (k = 0; k < e->p->n[GAS]; k++)
-      tmp -= product_element_coef( e->element[j], e->p->species[GAS][k]) * 
-        e->p->coef[GAS][k] * enthalpy_0(e->p->species[GAS][k], e->T);
+    for (k = 0; k < e->p.n[GAS]; k++)
+      tmp -= product_element_coef( e->element[j], e->p.species[k][GAS]) * 
+        e->p.coef[k][GAS] * enthalpy_0(e->p.species[k][GAS], e->T);
     
-    matrix[j][ e->n_element + e->p->n[CONDENSED] + 1] = tmp;
+    matrix[j][ e->n_element + e->p.n[CONDENSED] + 1] = tmp;
 
   }
 
-  for (j = 0; j < e->p->n[CONDENSED]; j++) // row
-    matrix[ j + e->n_element ][ e->n_element + e->p->n[CONDENSED] + 1] = 
-      -enthalpy_0( e->p->species[CONDENSED][j], e->T);
+  for (j = 0; j < e->p.n[CONDENSED]; j++) // row
+    matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 
+      -enthalpy_0( e->p.species[j][CONDENSED], e->T);
   
   tmp = 0.0;
-  for (k = 0; k < e->p->n[GAS]; k++)
-    tmp -= e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T ); 
+  for (k = 0; k < e->p.n[GAS]; k++)
+    tmp -= e->p.coef[k][GAS]*enthalpy_0( e->p.species[k][GAS], e->T ); 
 
-  matrix[e->n_element + e->p->n[CONDENSED]][e->n_element
-                                           + e->p->n[CONDENSED]+ 1] = tmp;
+  matrix[e->n_element + e->p.n[CONDENSED]][e->n_element
+                                           + e->p.n[CONDENSED]+ 1] = tmp;
   
   return 0;
 }
@@ -196,32 +196,33 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
   fill_matrix(matrix, e);
   
   // del ln(n)/ del ln(T)
-  matrix[e->n_element + e->p->n[CONDENSED]][e->n_element + e->p->n[CONDENSED]]
+  matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
 
   // right side
   for (j = 0; j < e->n_element; j++)
   {
     tmp = 0.0;
-    for (k = 0; k < e->p->n[GAS]; k++)
-      tmp += product_element_coef( e->element[j], e->p->species[GAS][k]) * 
-        e->p->coef[GAS][k];
+    for (k = 0; k < e->p.n[GAS]; k++)
+      tmp += product_element_coef( e->element[j], e->p.species[k][GAS]) * 
+        e->p.coef[k][GAS];
  
-    matrix[j][ e->n_element + e->p->n[CONDENSED] + 1] = tmp;
+    matrix[j][ e->n_element + e->p.n[CONDENSED] + 1] = tmp;
 
   }
 
   
-  for (j = 0; j < e->p->n[CONDENSED]; j++) // row
-    matrix[ j + e->n_element ][ e->n_element + e->p->n[CONDENSED] + 1] = 0;
+  for (j = 0; j < e->p.n[CONDENSED]; j++) // row
+    matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 0;
 
   
   tmp = 0.0;
-  for (k = 0; k < e->p->n[GAS]; k++)
-    tmp += e->p->coef[GAS][k]; 
+  for (k = 0; k < e->p.n[GAS]; k++)
+    tmp += e->p.coef[k][GAS]; 
   
-  matrix[e->n_element + e->p->n[CONDENSED]][e->n_element
-                                           + e->p->n[CONDENSED]+ 1] = tmp;
+  matrix[e->n_element + e->p.n[CONDENSED]][e->n_element
+                                           + e->p.n[CONDENSED]+ 1] = tmp;
   
   return 0;
 }
+
