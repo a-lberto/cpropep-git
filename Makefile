@@ -3,18 +3,28 @@
 
 CC   = gcc
 COPT = -g -Wall
-LIB  =  -lm -lnum 
-LIBDIR = -L../libnum/
-INCLUDEDIR = -I../libnum/
+LIB  =  -lcpropep -lm -lnum 
+LIBDIR = -L../libnum/ -L.
+INCLUDEDIR = -I../libnum/ -I.
+
+LIBNAME = libcpropep.a
 
 PROG = cpropep
 
-OBJS = equilibrium.o cpropep.o load.o getopt.o 
+LIBOBJS = equilibrium.o load.o
+
+OBJS = cpropep.o getopt.o
 
 .SUFFIXES: .c
 
+all: $(LIBNAME) $(PROG)
+
 .c.o:
 	$(CC) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
+
+$(LIBNAME): $(LIBOBJS)
+	ar -r $@ $(LIBOBJS)
+	ranlib $@
 
 $(PROG): $(OBJS)
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@

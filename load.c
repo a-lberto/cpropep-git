@@ -43,9 +43,11 @@ int load_thermo(char *filename)
   if ((fd = fopen(filename, "r")) == NULL )
     return 1;
 
-  printf("Loading thermo data file...");
-  fflush(stdout);
-
+  if (global_verbose)
+  {
+    printf("Loading thermo data file...");
+    fflush(stdout);
+  }
 
   while ((fgets(buf_ptr, 88, fd)) != NULL)
   {
@@ -224,7 +226,10 @@ int load_thermo(char *filename)
     }
   }
   fclose(fd);
-  printf("%d species loaded.\n", i);
+
+  if (global_verbose)
+    printf("%d species loaded.\n", i);
+  
   return i;
 }
 
@@ -246,9 +251,12 @@ int load_propellant(char *filename)
   if ((fd = fopen(filename, "r")) == NULL )
     return 1;
 
-  printf("Loading propellant data file...");
-  fflush(stdout);
-  
+  if (global_verbose)
+  {
+    printf("Loading propellant data file...");
+    fflush(stdout);
+  }
+
   while ((fgets(buf_ptr, 88, fd)) != NULL)
   {
     /* if the line is not commented */
@@ -282,11 +290,11 @@ int load_propellant(char *filename)
 	}
       }
 	  
-      strncpy(tmp_ptr, buf_ptr + 70, 5);
+      strncpy(tmp_ptr, buf_ptr + 69, 5);
       tmp[5] = '\0';		    
       propellant_list[i].heat = atoi(tmp);
       
-      strncpy(tmp_ptr, buf_ptr + 70, 5);
+      strncpy(tmp_ptr, buf_ptr + 75, 5);
       tmp[5] = '\0';
       propellant_list[i].density = atof(tmp);
       
@@ -294,7 +302,8 @@ int load_propellant(char *filename)
     }
   }  
   fclose(fd);     
-  printf("%d species loaded.\n", i);
+  if (global_verbose)
+    printf("%d species loaded.\n", i);
   return i;
 }
 

@@ -41,6 +41,8 @@ MACRO: Hold the number of species in for each type data type
 #define _min(a, b, c) __min( __min(a, b), c)
 #define _max(a, b, c) __max( __max(a, b), c)
 
+extern int global_verbose;
+
 /****************************************************************
 TYPE:  Enumeration of the possible state of a substance
 *****************************************************************/
@@ -369,6 +371,9 @@ AUTHOR: Antoine Lefebvre
 **************************************************************/
 double delta_enthalpy(int sp, float T);
 
+double propellant_enthalpy(composition_t *c);
+double product_enthalpy(product_t *p, double T);
+double product_entropy(product_t *p, double T);
 
 /*************************************************************
 FUNCTION: Return the gibbs free energy of the molecule in 

@@ -29,6 +29,7 @@
 #include "load.h"
 #include "libnum.h"
 
+#define ESTIMATED_T 3000
 
 /* global variable containing the information about chemical species */
 propellant_t	*propellant_list;
@@ -37,7 +38,10 @@ thermo_t	*thermo_list;
 
 double conc_tol = 1e-8;
 double conv_tol = 0.5e-5;
-int iteration_max = 50;
+int iteration_max = 100;
+
+/* 1 for verbose, 0 for non-verbose */
+int global_verbose = 0;
 
 /****************************************************************
 VARIABLE: Contain the molar mass of element by atomic number
@@ -84,7 +88,7 @@ const char symb[N_SYMB][3] = {
 /***************************************************************
 MACRO: molar gaz constant in J/(mol K)
 ****************************************************************/
-const float  R = 8314.3; 
+const float  R = 8.3143; 
 
 
 double enthalpy(int sp, float T)
@@ -173,7 +177,7 @@ int temperature_check(int sp, float T)
 double delta_enthalpy(int sp, float T)
 {
   /* delta henthalpy in J/mol */
-  return enthalpy(sp, T) - (thermo_list + sp)->heat;
+  return enthalpy(sp, T)*R*T - (thermo_list + sp)->heat;
 }
 
 
@@ -219,11 +223,45 @@ double propellant_molar_mass(int molecule)
 /* J/mol */
 double heat_of_formation(int molecule)
 {
-  return (propellant_list + molecule)->heat * 4.1868 * 
-    propellant_molar_mass(molecule)/1000;
+  double hf = (propellant_list + molecule)->heat * 4.1868 * 
+    propellant_molar_mass(molecule);
+  //printf("Hf: %f\n", hf);
+  return hf;
 }
 
 
+double propellant_enthalpy(composition_t *c)
+{
+  int i;
+  double h = 0.0;
+  for (i = 0; i < c->ncomp; i++)
+  {
+    h += c->coef[i]*heat_of_formation( c->molecule[i] );
+  }
+  return h;
+}
+
+double product_enthalpy(product_t *p, double T)
+{
+  int i;
+  double h = 0.0;
+  for (i = 0; i < p->n[GAS]; i++)
+  {
+    h += p->coef[GAS][i]*enthalpy(p->species[GAS][i], T)*R*T;
+  }
+  return h;
+}
+
+double product_entropy(product_t *p, double T)
+{
+  int i;
+  double e = 0.0;
+  for (i = 0; i < p->n[GAS]; i++)
+  {
+    e += p->coef[GAS][i]*entropy(p->species[GAS][i], T)*R;
+  }
+  return e;
+}
 
 int print_thermo_info(int sp)
 {
@@ -329,7 +367,7 @@ int print_product_composition(equilibrium_t *e)
 {
   int i;
 
-  printf("%.4e mol of gazes\n", e->n);
+  printf("%.4e mol of gaz\n", e->n);
   printf("\t  molar fraction  mol\n");
   for (i = 0; i < e->p->n[GAS]; i++)
   {
@@ -887,14 +925,19 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     /* enthalpy of reactant (not sure for the value of R */
     for (k = 0; k < e->c->ncomp; k++)
       tmp += e->c->coef[k]*heat_of_formation( e->c->molecule[k] )/(R*298.15);
+    //printf("Ho: %f\n", tmp);
+    //tmp = 0.0;
     for (k = 0; k < e->p->n[GAS]; k++)
       tmp -= e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T);
     for (k = 0; k < e->p->n[CONDENSED]; k++)
       tmp -= e->p->coef[CONDENSED][k]*enthalpy( e->p->species[CONDENSED][k], 
-						e->T);
+    						e->T);
+    //printf("Ho-H: %f\n", tmp);
+    //tmp = 0.0;
     for (k = 0; k < e->p->n[GAS]; k++)
       tmp += e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T)*
-	gibbs( e->p->species[GAS][k], GAS, e->p->coef[GAS][k], e->n, e->T, e->P);
+	gibbs( e->p->species[GAS][k], GAS, e->p->coef[GAS][k], e->n, 
+	       e->T, e->P);
 
     matrix[e->n_element + e->p->n[CONDENSED] + 1][e->n_element +
 						 e->p->n[CONDENSED] + 2] = tmp;
@@ -1048,6 +1091,8 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   double  * sol;
   int       convergence_ok;
 
+  int  ex = 0;
+
   /* control factor */
   double lambda1;
   double lambda2; 
@@ -1068,7 +1113,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
 
   /* initial temperature for assign enthalpy, entropy/pressure */
   if ( P != TP)
-    equil->T = 3800;
+    equil->T = ESTIMATED_T;
 
   print_propellant_composition(equil);
 
@@ -1115,12 +1160,18 @@ int equilibrium(equilibrium_t *equil, problem_t P)
       /* remove undesired condensed */
       if (!remove_condensed(&size, &n_condensed, equil))
       {
-	printf("None remove. Try reinserting remove gazes\n");
+	if (ex)
+	{
+	  printf("No convergence, don't trust results\n");
+	  break;
+	}
+	printf("None remove. Try reinserting remove gaz\n");
 	for ( i = 0; i < equil->p->n[GAS]; i++)
 	{
 	  if (equil->p->coef[GAS][i] == 0.0)
 	    equil->p->coef[GAS][i] = 1e-6;
 	}
+	ex = 1;
 	k = -1;
 	continue;	
       }
@@ -1219,7 +1270,10 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     if (P != TP)
       equil->T = exp( log(equil->T) + lambda*sol[equil->n_element + 
 						equil->p->n[CONDENSED] + 1]);
-    
+
+    if (equil->verbose > 1)
+      printf("Temperature: %f\n", equil->T);
+
     /* new value of n */
     equil->n = exp( log(equil->n) + lambda*equil->delta_ln_n );
     
@@ -1252,7 +1306,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     {
       printf("The solution has converge in %d iteration\n", k);
       //print_product_composition(equil);
-
+      ex = 0;
       /* remove undesired condensed */
       if (remove_condensed(&size, &n_condensed, equil))
       	convergence_ok = 0;

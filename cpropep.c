@@ -72,7 +72,8 @@ int load_input(FILE *fd, equilibrium_t *e)
 { 
   int tmp1, tmp2;
 
-  int sp, m;
+  int sp;
+  double m;
 
   int section = 0;
 
@@ -116,7 +117,7 @@ int load_input(FILE *fd, equilibrium_t *e)
 	
 	*(qt + strlen(qt) - 1) = '\n';
 	
-	m = atoi(qt);
+	m = atof(qt);
 
 	if ( unit == 'g') 
 	  add_in_propellant(e, sp, GRAM_TO_MOL(m, sp) );
@@ -253,11 +254,22 @@ int main(int argc, char *argv[])
     set_verbose(equil, v);
 
     equilibrium(equil, HP);
-
+    /*
+    printf("%f\n", propellant_enthalpy(equil->c));
+    printf("%f\n", product_enthalpy(equil->p, 2471));
+    printf("%f\n", product_entropy(equil->p, 2471));
+    printf("%f\n", product_enthalpy(equil->p, 2500));
+    */
     dealloc_equillibrium (equil);
   }
-
- 
+  /*
+  printf("CO2: %f %f\n",delta_enthalpy(302, 1700), delta_enthalpy(302, 1800));
+  printf("CO: %f %f\n",delta_enthalpy(292, 1700), delta_enthalpy(292, 1800));
+  printf("H2O: %f %f\n",delta_enthalpy(631, 1700), delta_enthalpy(631, 1800));
+  printf("H2: %f %f\n",delta_enthalpy(624, 1700), delta_enthalpy(624, 1800));
+  printf("N2: %f %f\n",delta_enthalpy(798, 1700), delta_enthalpy(798, 1800));
+  printf("K2CO3: %f %f\n",delta_enthalpy(1399, 1700), delta_enthalpy(1399, 1800));
+  */
   free (propellant_list);
   free (thermo_list);
 
