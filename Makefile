@@ -8,20 +8,10 @@ COPT = -g -Wall -O3 #-pg -O6\
 DEF = -DGCC #-DTRUE_ARRAY
 
 all:
-	make -C lib all
-	make -C cpropep all
-	make -C cgi all
-	make -C prop all
-
+	make -C src all
 
 clean:
-	make -C lib clean
-	make -C cpropep clean
-	make -C cgi clean
-	make -C prop clean
+	make -C src clean
 
 deep-clean: clean
-	make -C lib deep-clean
-	make -C cpropep deep-clean
-	make -C cgi deep-clean
-	make -C prop deep-clean
+	make -C src deep-clean
