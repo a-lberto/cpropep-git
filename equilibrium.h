@@ -160,7 +160,7 @@ DATE: February 24, 2000
 typedef struct _equilibrium
 {
   unsigned int  verbose;      /* verbose level */
-
+    
   composition_t *c;           /* pointer to a propellant composition */
   product_t     *p;           /* pointer to a product struct */
 
@@ -169,9 +169,10 @@ typedef struct _equilibrium
   int   n_element;
 
   int is_state_set; /* true if you have set the state */
-  double T;
-  double P;
+  double T; /* temperature */
+  double P; /* pressure */
 
+    /* not needed */
   int    isequil;             /* true when the equilibrium have been compute */
 
   double         n;           /* total number of mole */

@@ -1,15 +1,17 @@
 
 
 Propellant
-#+210  15g
-#+765  6.289m
-#+766  70g 
-#+840  1m
-#+963   0.5m 
-#+436   0.5m
-#+378   1m
-+685   7.936g  Oxygene
-+458   1g  Hydrogene
++211   15g       carbon
++765   75g      KNO3
+#+766   1m       KClO4
+#+840  1m       Sucrose
+#+963  0.5m     UDMH
+#+436  0.5m     Hyfrazine
+#+378  1m       Fluorine
+#+685  0.5m     Oxygene
+#+458  1m       Hydrogene
+#+976  5m       water
+#+578  1m       ch4
 
-TP  2471  18
+HP  1755  136 
 

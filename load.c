@@ -54,17 +54,17 @@ int load_thermo(char *filename)
     /* if the line is not commented */
     if (*(buf_ptr) != '!')
     {
-      /* Read in the name and the comments */
+        /* Read in the name and the comments */
       strncpy((thermo_list + i)->name, buf_ptr, 18);
       trim_spaces((thermo_list + i)->name, 18);
-      
+        
       strncpy((thermo_list + i)->comments, buf_ptr + 18, 55);
       trim_spaces((thermo_list + i)->comments, 55);
       
       if ((fgets(buf_ptr, 88, fd)) == NULL)  /* get a new line */
       {
-        /* end of file occur */
-	break;
+          /* end of file occur */
+          break;
       }
       
       strncpy(tmp_ptr, buf_ptr, 3);
@@ -77,26 +77,26 @@ int load_thermo(char *filename)
       /* grep the elements ( 5  max )*/
       for (k = 0; k < 5; k++)
       {
-	tmp[0] = buf[k * 8 + 10];
-	tmp[1] = buf[k * 8 + 11];
-	tmp[2] = '\0';
+        tmp[0] = buf[k * 8 + 10];
+        tmp[1] = buf[k * 8 + 11];
+        tmp[2] = '\0';
 		    
-	/* find the atomic number of the element */
-	for (l = 0; l < N_SYMB; l++)
-	{
-	  if (!strcmp(tmp, symb[l]))
-	  {
-	    (thermo_list + i)->elem[k] = l;
-	    break;
-	  };
-	};
+        /* find the atomic number of the element */
+        for (l = 0; l < N_SYMB; l++)
+        {
+          if (!strcmp(tmp, symb[l]))
+          {
+            (thermo_list + i)->elem[k] = l;
+            break;
+          }
+        }
 		    
         // And the number of atoms
-	strncpy(tmp_ptr, buf_ptr + k * 8 + 13, 6);
-	tmp[6] = '\0';
+        strncpy(tmp_ptr, buf_ptr + k * 8 + 13, 6);
+        tmp[6] = '\0';
 	
-	// Should this be an int?  If so, why is it stored in x.2 format?
-	(thermo_list + i)->coef[k] = (int) atof(tmp_ptr);
+        // Should this be an int?  If so, why is it stored in x.2 format?
+        (thermo_list + i)->coef[k] = (int) atof(tmp_ptr);
       }
 	       
       /* grep the state */
@@ -119,37 +119,60 @@ int load_thermo(char *filename)
       /* there is '(thermo_list + i)->nint' set of data */
       if ((thermo_list + i)->nint == 0)
       {
-	/* Set the enthalpy */
-	(thermo_list + i)->enth = atof(tmp_ptr);
-	
-	/* condensed phase, different info */
-	if ((fgets(buf_ptr, 88, fd)) == NULL) 
-	{
-	  /* end of file occur */
-	  break;
-	}
+        /* Set the enthalpy */
+        (thermo_list + i)->enth = atof(tmp_ptr);
+          
+        /* condensed phase, different info */
+        if ((fgets(buf_ptr, 88, fd)) == NULL) 
+        {
+            /* end of file occur */
+            break;
+        }
 			  
-	/* treat the line */
-	/* get the temperature of the assigned enthalpy */
-	strncpy(tmp_ptr, buf_ptr + 1, 10);
-	tmp[10] = '\0';
+        /* treat the line */
+        /* get the temperature of the assigned enthalpy */
+        strncpy(tmp_ptr, buf_ptr + 1, 10);
+        tmp[10] = '\0';
 	
-	(thermo_list + i)->temp = atof(tmp_ptr);
+        (thermo_list + i)->temp = atof(tmp_ptr);
       }
       else 
       { 
-	/* Set the heat of formation */
-	(thermo_list + i)->heat = atof(tmp_ptr);
-	
-	for (j = 0; j < (thermo_list + i)->nint; j++)
-	{
-	  /* Get the first line of three */
-	  if ( (fgets(buf_ptr, 88, fd)) == NULL) 
-	  {
-	    /* end of file occur */
-	    break;
-	  }
-	  
+        /* Set the heat of formation */
+        (thermo_list + i)->heat = atof(tmp_ptr);
+
+
+
+        /* I'm not quite sure it is necessary */
+        
+        /* if the value is 0 and this is the same substance as
+           the previous one but in a different state ... */
+        if ( (thermo_list + i)->heat == 0.0 )
+        {
+          l = 0;
+            
+          for (j = 0; j < 5; j++)
+          {
+            if (!((thermo_list+i)->coef[j] == (thermo_list+i-1)->coef[j] &&
+                  (thermo_list+i)->elem[j] == (thermo_list+i-1)->elem[j]))
+            l = 1;
+          }
+          /* set to the same value as the previous one */
+          if (l)
+            (thermo_list+i)->heat = (thermo_list+i-1)->heat; 
+        }
+                    
+
+            
+        for (j = 0; j < (thermo_list + i)->nint; j++)
+        {
+          /* Get the first line of three */
+          if ( (fgets(buf_ptr, 88, fd)) == NULL) 
+          {
+            /* end of file occur */
+            break;
+          }
+              
 	  /* low */
 	  strncpy(tmp_ptr, buf_ptr + 1, 10);
 	  tmp[10] = '\0';
@@ -268,28 +291,28 @@ int load_propellant(char *filename)
       
       for (j = 0; j < 6; j++)
       {
-	tmp[0] = buf[j * 5 + 39];
-	tmp[1] = buf[j * 5 + 40];
-	tmp[2] = buf[j * 5 + 41];
-	tmp[3] = '\0';
-	
-	(propellant_list + i)->coef[j] = atoi(tmp);
-	
-	tmp[0] = buf[j * 5 + 42];
-	tmp[1] = buf[j * 5 + 43];
-	tmp[2] = '\0';
-		   
+        tmp[0] = buf[j * 5 + 39];
+        tmp[1] = buf[j * 5 + 40];
+        tmp[2] = buf[j * 5 + 41];
+        tmp[3] = '\0';
+        
+        (propellant_list + i)->coef[j] = atoi(tmp);
+        
+        tmp[0] = buf[j * 5 + 42];
+        tmp[1] = buf[j * 5 + 43];
+        tmp[2] = '\0';
+        
 	      /* find the atomic number of the element */
-	for (k = 0; k < N_SYMB; k++)
-	{
-	  if (!(strcmp(tmp, symb[k]))) 
-	  {
-	    (propellant_list + i)->elem[j] = k;
-	    break;
-	  }
-	}
+        for (k = 0; k < N_SYMB; k++)
+        {
+          if (!(strcmp(tmp, symb[k]))) 
+          {
+            (propellant_list + i)->elem[j] = k;
+            break;
+          }
+        }
       }
-	  
+      
       strncpy(tmp_ptr, buf_ptr + 69, 5);
       tmp[5] = '\0';		    
       propellant_list[i].heat = atoi(tmp);

@@ -6,6 +6,7 @@
 /* getopt()  from Don Libes "Obfuscated C" */
 
 #include <stdio.h>
+#include <string.h>
 
 /* getopt()  -- parse command line arguments */
 /* Original Author: AT&T */
@@ -19,10 +20,6 @@
      fprintf(stderr, "%s", s);\
      fprintf(stderr, "%s", errbuf); }
 
-
-extern int strcmp();
-extern char *strchr();
-extern int strlen();
 
 int   opterr = 1;  /* getopt prints errors if this is one */
 int   optind = 1;  /* token pointer */

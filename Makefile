@@ -3,7 +3,7 @@
 
 CC   = gcc
 COPT = -g -Wall
-LIB  =  -lcpropep -lm -lnum 
+LIB  =  -lcpropep -lm -lnum -lcruft -lf2c
 LIBDIR = -L../libnum/ -L.
 INCLUDEDIR = -I../libnum/ -I.
 
