@@ -1,9 +1,9 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.4 2000/05/10 01:36:00 antoine Exp $ */
+/* $Id: derivative.c,v 1.5 2000/05/24 02:14:34 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
-/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*    Mark Pinese <pinese@cyberwizards.com.au>                         */
 /*                                                                     */
 /* Licensed under the GPLv2                                            */
 
@@ -62,11 +62,11 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
   {
     cp += e->p.coef[i][GAS]*pow(enthalpy_0(e->p.species[i][GAS], e->T),2);
   }
-  for (i = 0; i < e->p.n[CONDENSED]; i++)
-  {
-    cp += e->p.coef[i][CONDENSED]*
-      pow(enthalpy_0(e->p.species[i][CONDENSED], e->T),2);
-  }
+  //for (i = 0; i < e->p.n[CONDENSED]; i++)
+  //{
+  //  cp += e->p.coef[i][CONDENSED]*
+  //    pow(enthalpy_0(e->p.species[i][CONDENSED], e->T),2);
+  // }
   return cp;
 }
 
@@ -172,7 +172,7 @@ int fill_temperature_derivative_matrix(double **matrix, equilibrium_t *e)
 
   }
 
-  for (j = 0; j < e->p.n[CONDENSED]; j++) // row
+  for (j = 0; j < e->p.n[CONDENSED]; j++) /* row */
     matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 
       -enthalpy_0( e->p.species[j][CONDENSED], e->T);
   
@@ -197,11 +197,11 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
   /* fill the common part */
   fill_matrix(matrix, e);
   
-  // del ln(n)/ del ln(T)
+  /* del ln(n)/ del ln(T) */
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
   
-  // right side
+  /* right side */
   for (j = 0; j < e->n_element; j++)
   {
     tmp = 0.0;
@@ -214,7 +214,7 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
   }
 
   
-  for (j = 0; j < e->p.n[CONDENSED]; j++) // row
+  for (j = 0; j < e->p.n[CONDENSED]; j++) /* row */
     matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 0;
   
   

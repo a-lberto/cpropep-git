@@ -9,7 +9,7 @@
 extern propellant_t	*propellant_list;
 extern thermo_t	    *thermo_list;
 
-//extern float molar_mass[N_SYMB];
+extern double g;
 
 extern char symb[N_SYMB][3];
 
@@ -17,7 +17,9 @@ extern FILE * errorfile;
 extern FILE * outputfile;
 
 /* the minimum concentration we are interest to see */
-#define CONC_MIN 1e-4 
+#define CONC_MIN 1.0e-4 
+
+#define ATM_TO_PSI 14.695949
 
 int print_propellant_info(int sp)
 {
@@ -142,23 +144,25 @@ int print_product_composition(equilibrium_t *e)
 {
   int i;
   
-  fprintf(outputfile, "%.4e mol of gaz\n", e->n);
-  fprintf(outputfile, "molar fraction \t mol \n");
+  fprintf(outputfile, "molar fraction \tmol \n");
   for (i = 0; i < e->p.n[GAS]; i++)
   {
-    if (e->p.coef[GAS][i]/e->n > CONC_MIN)
-      fprintf(outputfile, "% .4e \t% .4e \t %s\n", 
+    if (e->p.coef[i][GAS]/e->n > CONC_MIN)
+    {
+      fprintf(outputfile, "%.4e \t%.4e \t %s\n", 
               e->p.coef[i][GAS]/e->n,
               e->p.coef[i][GAS],
               (thermo_list + e->p.species[i][GAS])->name);
+    }
   }
+  
   if (e->p.n[CONDENSED] > 0)
     fprintf(outputfile, "Condensed species (mol)\n");
   for (i = 0; i < e->p.n[CONDENSED]; i++)
   {
-    fprintf(outputfile, "%s  % .4e\n",
-            (thermo_list + e->p.species[i][CONDENSED])->name,
-            e->p.coef[i][CONDENSED]);
+    fprintf(outputfile, "         \t%.4e \t %s\n",
+            e->p.coef[i][CONDENSED],
+            (thermo_list + e->p.species[i][CONDENSED])->name);
   }
   fprintf(outputfile, "\n");
   return 0;
@@ -166,24 +170,40 @@ int print_product_composition(equilibrium_t *e)
 
 int print_product_properties(equilibrium_t *e)
 {
-  fprintf(outputfile, "Molar mass of product: % .2f g/mol\n",
-          product_molar_mass(e));
-  fprintf(outputfile, "Products enthalpy    : % .2f J\n",
-          product_enthalpy(e)*R*e->T);
-  fprintf(outputfile, "Products entropy     : % .2f J/K\n",
-          product_entropy(e)*R);
-  fprintf(outputfile, "Temperature          : % .2f K\n", e->T);
-  fprintf(outputfile, "Pressure             : % .2f atm\n", e->P);
+  if (e->short_output)
+  {
+    fprintf(outputfile,
+"T(K)   T(F)   P(atm) P(psi)  Enthalpy   Entropy Gas   RT/V   Molar mass\n");
+    fprintf(outputfile,
+            "%4.1f %4.1f %-6.2f %-7.2f %-10.2f %-7.2f %4.3f %-6.3f %4.3f\n",
+            e->T, e->T*1.8-459.67, e->P, e->P*ATM_TO_PSI,
+            product_enthalpy(e)*R*e->T,
+            product_entropy(e)*R, e->n, e->P/e->n,
+            product_molar_mass(e));
+  }
+  else
+  {
+    fprintf(outputfile, "Molar mass of product: % 11.3f g/mol\n",
+            product_molar_mass(e));
+    fprintf(outputfile, "Products enthalpy    : % 11.3f J\n",
+            product_enthalpy(e)*R*e->T);
+    fprintf(outputfile, "Products entropy     : % 11.3f J/K\n",
+            product_entropy(e)*R);
+    fprintf(outputfile, "Temperature          : % 11.3f K\n", e->T);
+    fprintf(outputfile, "Pressure             : % 11.3f atm\n", e->P);
+    fprintf(outputfile, "RT/V                 : % 11.3f\n", e->P/e->n);
+    fprintf(outputfile, "Moles of gas         : % 11.3f\n", e->n);
+  }
+  
   return 0;
 }
 
 int print_propellant_composition(equilibrium_t *e)
 {
   int i, j;
-  double enth = 0.0;
   
   fprintf(outputfile, "Propellant composition\n");
-  fprintf(outputfile, "Code %-35s mol    Mass (g)  Composition\n", "Name");
+  fprintf(outputfile, "Code  %-35s mol    Mass (g)  Composition\n", "Name");
   for (i = 0; i < e->c.ncomp; i++)
   {
     fprintf(outputfile, "%-4d  %-35s %.4f %.4f ", e->c.molecule[i],
@@ -205,22 +225,20 @@ int print_propellant_composition(equilibrium_t *e)
 
   fprintf(outputfile, "Total mass: % .2f g\n", propellant_mass(e));
   
-  fprintf(outputfile, "\n");
-  fprintf(outputfile, "Propellant properties\n");
-  enth = propellant_enthalpy (e);
-  fprintf(outputfile, "Enthalpy: %.2f Joules\n", enth*R*e->T);
+  fprintf(outputfile, "Enthalpy  : % .2f Joules\n",
+          propellant_enthalpy(e)*R*e->T);
   
   fprintf(outputfile, "\n");
   return 0;
   
 }
 
-int print_derivative_results(deriv_t d)
+int print_derivative_results(deriv_t *d)
 {
-  fprintf(outputfile, "Cp                   : % .2f \n", d.cp);
-  fprintf(outputfile, "Cv                   : % .2f \n", d.cv);
-  fprintf(outputfile, "Cp/Cv                : % .2f \n", d.cp_cv);
-  fprintf(outputfile, "Isentropic exponent  : % .2f \n", d.isex);
+  fprintf(outputfile, "Cp                   : % .2f J/Kg/K\n", d->cp);
+  fprintf(outputfile, "Cv                   : % .2f J/Kg/K\n", d->cv);
+  fprintf(outputfile, "Cp/Cv                : % .2f \n", d->cp_cv);
+  fprintf(outputfile, "Isentropic exponent  : % .2f \n", d->isex);
   return 0;
 }
 
@@ -231,35 +249,36 @@ int print_performance_information(performance_t *p)
 
   if (p->frozen_ok)
   {
-    fprintf(outputfile, "\nFrozen performance characteristics.\n");
-    fprintf(outputfile, "-----------------------------------\n");
-
-    fprintf(outputfile, "Cp                   : % 9.2f\n", p->frozen.cp);
-    fprintf(outputfile, "Cp/Cv                : % 9.2f\n", p->frozen.cp_cv);
-    fprintf(outputfile, "Product molar mass   : % 9.2f\n",
-            p->frozen.molar_mass);
-
-    fprintf(outputfile, "\nThroat conditions\n");
-    fprintf(outputfile, "------------------\n");
-    fprintf(outputfile, "Pressure         : % 9.2f atm\n",
-            p->frozen.throat.pressure);
-    fprintf(outputfile, "Temperature      : % 9.2f K\n",
-            p->frozen.throat.temperature);
-    fprintf(outputfile, "Velocity of flow : % 9.2f m/s\n",
-            p->frozen.throat.velocity);
-
+    fprintf(outputfile,
+            "\n--- Frozen equilibrium performance characteristics. ---\n");
+    fprintf(outputfile,
+         "         T(K)      P(atm)    Cp        Cp/Cv     Flow velocity\n");
+    fprintf(outputfile,
+            "Chamber: %-9.2f %-9.2f %-9.2f %-9.2f %-9.2f\n",
+            p->frozen.chamber.temperature,
+            p->frozen.chamber.pressure,
+            p->frozen.cp, p->frozen.cp_cv, 0.0);
+    fprintf(outputfile,
+            "Throat:  %-9.2f %-9.2f %-9.2f %-9.2f %-9.2f\n",
+            p->frozen.throat.temperature,
+            p->frozen.throat.pressure,
+            p->frozen.cp, p->frozen.cp_cv, p->frozen.throat.velocity);
+    fprintf(outputfile,
+            "Exit:    %-9.2f %-9.2f %-9.2f %-9.2f %-9.2f\n",
+            p->frozen.exit.temperature,
+            p->frozen.exit.pressure,
+            p->frozen.cp, p->frozen.cp_cv, p->frozen.exit.velocity);
     
-    fprintf(outputfile, "\nExit conditions\n");
-    fprintf(outputfile, "---------------\n");
-    fprintf(outputfile, "Temperature       : % 9.2f K\n",
-            p->frozen.exit.temperature);
-    fprintf(outputfile, "Pressure          : % 9.2f atm\n",
-            p->frozen.exit.pressure);
-    fprintf(outputfile, "Velocity of flow  : % 9.2f m/s\n",
-            p->frozen.exit.velocity);
     fprintf(outputfile, "Specific impulse  : % 9.2f s\n",
             p->frozen.specific_impulse);
 
+    fprintf(outputfile, "Exit to throat area ratio: %9.2f\n",
+            (p->frozen.exit.temperature *
+             p->frozen.throat.pressure *
+             p->frozen.throat.velocity) /
+            (p->frozen.throat.temperature *
+             p->frozen.exit.pressure *
+             p->frozen.exit.velocity ));
   }
   else
   {
@@ -268,54 +287,56 @@ int print_performance_information(performance_t *p)
 
   if (p->equilibrium_ok)
   {
-    fprintf(outputfile, "\nEquilibrium performance characteristics.\n");
-    fprintf(outputfile, "-----------------------------------\n");
+    fprintf(outputfile,
+            "\n--- Shifting equilibrium performance characteristics. ---\n");
+    fprintf(outputfile,
+"         T(K)      P(atm) Cp        Cp/Cv  Is ex   Flow velocity  Molar mass\n");
+    
+    fprintf(outputfile,
+            "Chamber: %-9.2f %-6.2f %-9.2f %-6.2f %-7.2f %-14.2f %-9.2f\n",
+            p->equilibrium.chamber.temperature,
+            p->equilibrium.chamber.pressure,
+            p->equilibrium.chamber.deriv.cp,
+            p->equilibrium.chamber.deriv.cp_cv,
+            p->equilibrium.chamber.deriv.isex, 0.0,
+            p->equilibrium.chamber.molar_mass);
 
-    //fprintf(outputfile, "Cp                   : % .2f\n", p->equilibrium.cp);
-    //fprintf(outputfile, "Cp/Cv                : % .2f\n",
-    //        p->equilibrium.cp_cv);
-
-    fprintf(outputfile, "\nThroat conditions\n");
-    fprintf(outputfile, "------------------\n");
-    fprintf(outputfile, "Pressure            : % 9.2f atm\n",
-            p->equilibrium.throat.pressure);
-    fprintf(outputfile, "Temperature         : % 9.2f K\n",
-            p->equilibrium.throat.temperature);
-    fprintf(outputfile, "Velocity of flow    : % 9.2f m/s\n",
-            p->equilibrium.throat.velocity);
-    fprintf(outputfile, "Cp                  : % 9.2f\n",
-            p->equilibrium.throat.cp);
-    fprintf(outputfile, "Cp/Cv               : % 9.2f\n",
-            p->equilibrium.throat.cp_cv);
-    fprintf(outputfile, "Isentropic exponent : % 9.2f\n",
-            p->equilibrium.throat.isex);
-    fprintf(outputfile, "Product molar mass  : % 9.2f\n",
+    fprintf(outputfile,
+            "Throat:  %-9.2f %-6.2f %-9.2f %-6.2f %-7.2f %-14.2f %-9.2f\n",
+            p->equilibrium.throat.temperature,
+            p->equilibrium.throat.pressure,
+            p->equilibrium.throat.deriv.cp,
+            p->equilibrium.throat.deriv.cp_cv,
+            p->equilibrium.throat.deriv.isex,
+            p->equilibrium.throat.velocity,
             p->equilibrium.throat.molar_mass);
-    
-    
-    fprintf(outputfile, "\nExit conditions\n");
-    fprintf(outputfile, "---------------\n");
-    fprintf(outputfile, "Temperature         : % 9.2f K\n",
-            p->equilibrium.exit.temperature);
-    fprintf(outputfile, "Pressure            : % 9.2f atm\n",
-            p->equilibrium.exit.pressure);
-    fprintf(outputfile, "Velocity of flow    : % 9.2f m/s\n",
-            p->equilibrium.exit.velocity);
-    fprintf(outputfile, "Cp                  : % 9.2f\n",
-            p->equilibrium.exit.cp);
-    fprintf(outputfile, "Cp/Cv               : % 9.2f\n",
-            p->equilibrium.exit.cp_cv);
-    fprintf(outputfile, "Isentropic exponent : % 9.2f\n",
-            p->equilibrium.exit.isex);
-    fprintf(outputfile, "Product molar mass  : % 9.2f\n",
+            
+    fprintf(outputfile,
+            "Exit:    %-9.2f %-6.2f %-9.2f %-6.2f %-7.2f %-14.2f %-9.2f\n",
+            p->equilibrium.exit.temperature,
+            p->equilibrium.exit.pressure,
+            p->equilibrium.exit.deriv.cp,
+            p->equilibrium.exit.deriv.cp_cv,
+            p->equilibrium.exit.deriv.isex,
+            p->equilibrium.exit.velocity,
             p->equilibrium.exit.molar_mass);
-    fprintf(outputfile, "Specific impulse    : % 9.2f s\n",
-            p->equilibrium.specific_impulse);
     
+    fprintf(outputfile, "Specific impulse  : % 9.2f s\n",
+            p->equilibrium.specific_impulse);
+
+    fprintf(outputfile, "Exit to throat area ratio: %9.2f\n\n",
+            (p->equilibrium.exit.molar_mass *
+             p->equilibrium.exit.temperature *
+             p->equilibrium.throat.pressure *
+             p->equilibrium.throat.velocity) /
+            (p->equilibrium.throat.molar_mass *
+             p->equilibrium.throat.temperature *
+             p->equilibrium.exit.pressure *
+             p->equilibrium.exit.velocity ));
   }
   else
   {
-    fprintf(outputfile, "Equilibrium performance was not computed\n");
+    fprintf(outputfile, "Equilibrium performance was not computed\n\n");
   }
 
   return 0;

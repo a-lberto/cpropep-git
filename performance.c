@@ -1,18 +1,16 @@
 /* performance.c  -  Compute performance caracteristic of a motor
                      considering equilibrium                      */
-/* $Id: performance.c,v 1.6 2000/05/10 01:36:00 antoine Exp $ */
+/* $Id: performance.c,v 1.7 2000/05/24 02:14:34 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
-/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*    Mark Pinese  <pinese@cyberwizards.com.au>                        */
 /*                                                                     */
 /* Licensed under the GPLv2                                            */
-
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-
-#include <time.h>
+//#include <time.h>
 
 #include "performance.h"
 #include "derivative.h"
@@ -28,7 +26,7 @@ double velocity_of_flow(equilibrium_t *e, double exit_temperature);
 double compute_temperature(equilibrium_t *e, double pressure,
                            double p_entropy);
 
-double g = 9.80665;
+double g = 9.80665; /* m/s/s */
 
 extern FILE * errorfile;
 extern FILE * outputfile;
@@ -130,7 +128,11 @@ int frozen_performance(equilibrium_t *e, performance_t *p,
       return ERROR;
     }
   }
- 
+
+  p->frozen.chamber.temperature = e->T;
+  p->frozen.chamber.pressure    = e->P;
+  p->frozen.chamber.velocity    = 0.0;
+  
   /* Cp of the combustion point assuming frozen */
   p->frozen.cp    = mixture_specific_heat_0(e, e->T)*R;
   /* Cv = Cp - nR  (for frozen) */
@@ -188,8 +190,8 @@ int frozen_performance(equilibrium_t *e, performance_t *p,
 }
 
 
-int equilibrium_performance(equilibrium_t *e, performance_t *p,
-                            double exit_pressure)
+int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
+                            performance_t *p, double exit_pressure)
 {
 
   double sound_velocity = 0.0;
@@ -197,14 +199,14 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
   double pc_pt;
   double chamber_entropy;
   
-  deriv_t d;
+  deriv_t *d;
   
   /* Allocate a new equlibrium structure to hold information of the
      equilibrium at different point we consider */
 
-  equilibrium_t *ne;
-  ne = (equilibrium_t *)malloc(sizeof(equilibrium_t));
-  initialize_equilibrium(ne);
+  //equilibrium_t *ne;
+  //ne = (equilibrium_t *)malloc(sizeof(equilibrium_t));
+  //initialize_equilibrium(ne);
 
   /* find the equilibrium composition in the chamber */
   if (!(e->isequil))/* if the equilibrium have not already been compute */
@@ -215,10 +217,16 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
       return ERROR;
     }
   }
-      
-  /* Compute derivative */
-  derivative(e, &d);
+  p->equilibrium.chamber.pressure = e->P;
+  p->equilibrium.chamber.temperature = e->T;
+  p->equilibrium.chamber.molar_mass = product_molar_mass(e);
   
+  /* first consider the chamber state */
+  d = &(p->equilibrium.chamber.deriv);
+  
+  /* Compute derivative */
+  derivative(e, d);
+
   if (e->verbose > 0)
   {
     print_product_composition(e);
@@ -233,7 +241,7 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
   
   /* Computing throat condition */
   /* Approximation of the throat pressure */
-  pc_pt = pow(d.isex/2 + 0.5, d.isex/(d.isex - 1) );
+  pc_pt = pow(d->isex/2 + 0.5, d->isex/(d->isex - 1) );
   ne->entropy = chamber_entropy;
   do
   {
@@ -243,7 +251,7 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
     if (equilibrium(ne, SP))
     {
       fprintf(outputfile, "No equilibrium, performance evaluation aborted.\n");
-      break;
+      return ERROR;
     }
 
     if (e->verbose > 0)
@@ -251,33 +259,32 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
       print_product_composition(e);
     }
 
+    /* now consider the throat state */
+    d = &(p->equilibrium.throat.deriv);
+    
     /* Compute the new derivative properties */
-    derivative(ne, &d);
+    derivative(ne, d);
     p->equilibrium.throat.temperature = ne->T;
 
     sound_velocity = sqrt (1000*ne->n*R*p->equilibrium.throat.temperature*
-                           d.isex/propellant_mass(ne));
+                           d->isex/propellant_mass(ne));
     
     flow_velocity = sqrt (2000*(product_enthalpy(e)*R*e->T -
                                 product_enthalpy(ne)*R*ne->T)/
                           propellant_mass(ne));
 
     pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
-                           /(1000*(d.isex + 1)*ne->n*R*
+                           /(1000*(d->isex + 1)*ne->n*R*
                              p->equilibrium.throat.temperature
                              /propellant_mass(ne))));
     
   } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
                  /pow(flow_velocity, 2)) > 0.4e-4);
 
-  derivative(ne, &d);
+  derivative(ne, d);
 
-  p->equilibrium.throat.pressure    = e->P/pc_pt;
-  p->equilibrium.throat.velocity    = sound_velocity;
-
-  p->equilibrium.throat.cp         = d.cp;
-  p->equilibrium.throat.cp_cv      = d.cp_cv;
-  p->equilibrium.throat.isex       = d.isex;
+  p->equilibrium.throat.pressure   = e->P/pc_pt;
+  p->equilibrium.throat.velocity   = sound_velocity;
   p->equilibrium.throat.molar_mass = product_molar_mass(ne);
     
   ne->entropy = chamber_entropy;
@@ -290,12 +297,12 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
     return ERROR;
   }
 
+  /* now consider the exit state */
+  d = &(p->equilibrium.exit.deriv); 
+  
   /* Compute new derivative properties */
-  derivative(ne, &d);
+  derivative(ne, d);
 
-  p->equilibrium.exit.cp         = d.cp;
-  p->equilibrium.exit.cp_cv      = d.cp_cv;
-  p->equilibrium.exit.isex       = d.isex;
   p->equilibrium.exit.molar_mass = product_molar_mass(ne);
  
   flow_velocity = sqrt(2000*(product_enthalpy(e)*R*e->T -
@@ -310,11 +317,13 @@ int equilibrium_performance(equilibrium_t *e, performance_t *p,
   p->equilibrium_ok = true;
 
   /* we have to deallocate the new equilibrium */
-  dealloc_equilibrium (ne);
-  free (ne);
+  //dealloc_equilibrium (ne);
+  //free (ne);
   
   return SUCCESS;
 }
+
+
 
 
 

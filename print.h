@@ -54,7 +54,7 @@ int print_propellant_composition(equilibrium_t *e);
 
 
 
-int print_derivative_results(deriv_t d);
+int print_derivative_results(deriv_t *d);
 int print_performance_information(performance_t *p);
 
 #endif

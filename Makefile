@@ -1,8 +1,10 @@
 
-
-
 CC   = gcc
-COPT = -g -O -pg -Wall
+COPT = -g -Wall -O3\
+ -mpentium -ffast-math -funroll-loops -fomit-frame-pointer -fnonnull-objects\
+ -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
+ -fexpensive-optimizations -march=pentium -fno-rtti
+
 LIB  =  -lcpropep -lm -lnum -lcruft -lf2c
 LIBDIR = -L../libnum/ -L.
 INCLUDEDIR = -I../libnum/ -I.

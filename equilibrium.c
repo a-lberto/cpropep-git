@@ -1,11 +1,10 @@
 /* equilibrium.c  -  Responsible of the chemical equilibrium          */
-/* $Id: equilibrium.c,v 1.11 2000/05/10 01:36:00 antoine Exp $ */
+/* $Id: equilibrium.c,v 1.12 2000/05/24 02:14:34 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
-/*    Mark Pinese <ida.pinese@bushnet.qld.edu.au>                      */
+/*    Mark Pinese <pinese@cyberwizards.com.au>                         */
 /*                                                                     */
 /* Licensed under the GPLv2                                            */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +12,6 @@
 #include <math.h>
 #include <ctype.h>
 
-//#include <malloc.h>
 #include <time.h>
 
 #include "print.h"
@@ -623,26 +621,19 @@ int list_product(equilibrium_t *e)
     {
       st = (thermo_list + j)->state;
 
-      /* maybe useful to add every possible product  || 1 */ 
-
-      /* !!!!!!!!!!!!!!!!!!!!!!!!!!! */
-      if (temperature_check(j, e->T) || 1)  // if the molecule could 
-                                        // exist at that temperature
+      e->p.species[ e->p.n[st] ][st] = j;
+      e->p.n[st]++;
+      n++;
+      
+      if ((e->p.n[GAS] > num_thermo) || (e->p.n[CONDENSED] > MAX_PRODUCT))
       {
-        e->p.species[ e->p.n[st] ][st] = j;
-        e->p.n[st]++;
-        n++;
-
-        if ((e->p.n[GAS] > num_thermo) || (e->p.n[CONDENSED] > MAX_PRODUCT))
-        {
-          fprintf(errorfile,
-                  "Error: Maximum of %d differents product reach.\n",
-                  MAX_PRODUCT);
-          fprintf(errorfile, "       Change MAX_PRODUCT and recompile!\n");
-          return ERROR;
-        }
-        
-      }    
+        fprintf(errorfile,
+                "Error: Maximum of %d differents product reach.\n",
+                MAX_PRODUCT);
+        fprintf(errorfile, "       Change MAX_PRODUCT and recompile!\n");
+        return ERROR;
+      }
+       
     }
     ok = 1;
   }
@@ -723,6 +714,8 @@ int initialize_equilibrium(equilibrium_t *e)
   e->c.ncomp = 0;
   
   e->verbose = 1;
+  e->short_output = true;
+  
   e->isequil = false;
   e->is_listed = 0; /* the element haven't been listed */
   
@@ -733,39 +726,22 @@ int initialize_equilibrium(equilibrium_t *e)
 
 int copy_equilibrium(equilibrium_t *dest, equilibrium_t *src)
 {
-//  int i, j;  
 
-  dest->verbose    = src->verbose;
-  dest->n_element  = src->n_element;
-  dest->is_listed  = src->is_listed;
-  dest->T          = src->T;
-  dest->P          = src->P;
-  dest->isequil    = src->isequil;
-  dest->n          = src->n;
-  dest->delta_ln_n = src->delta_ln_n;
-
-  /*
-  for (i = 0; i < MAX_PRODUCT; i++)
-    dest->delta_ln_nj[i] = src->delta_ln_nj[i];
-  */
+  dest->verbose      = src->verbose;
+  dest->short_output = src->short_output;
+  dest->n_element    = src->n_element;
+  dest->is_listed    = src->is_listed;
+  dest->T            = src->T;
+  dest->P            = src->P;
+  dest->isequil      = src->isequil;
+  dest->n            = src->n;
+  dest->delta_ln_n   = src->delta_ln_n;
   
   memcpy(dest->delta_ln_nj, src->delta_ln_nj, MAX_PRODUCT*sizeof(double));
   
-  /*
-  for (i = 0; i < MAX_ELEMENT; i++)
-    dest->element[i] = src->element[i];
-  */
   memcpy(dest->element, src->element, MAX_ELEMENT*sizeof(int));
     
   dest->c.ncomp = src->c.ncomp;
-
-  /*
-  for (i = 0; i < MAX_COMP; i++)
-  {
-    dest->c.molecule[i] = src->c.molecule[i];
-    dest->c.coef[i]     = src->c.coef[i];
-  }
-  */
   
   memcpy(dest->c.molecule, src->c.molecule, MAX_COMP*sizeof(int));
   memcpy(dest->c.coef,     src->c.coef,     MAX_COMP*sizeof(double));
@@ -773,22 +749,10 @@ int copy_equilibrium(equilibrium_t *dest, equilibrium_t *src)
   
   dest->p.isalloc     = src->p.isalloc;
   dest->p.n_condensed = src->p.n_condensed;
-
-  /*
-  for (i = 0; i < STATE_LAST; i++)
-  {
-    dest->p.n[i] = src->p.n[i];
-    for (j = 0; j < MAX_PRODUCT; j++)
-    {
-      dest->p.species[j][i] = src->p.species[j][i];
-      dest->p.coef[j][i]    = src->p.coef[j][i]; 
-    }
-  }
-  */
   
   memcpy(dest->p.n,       src->p.n,       STATE_LAST*sizeof(int));
   memcpy(dest->p.species, src->p.species, STATE_LAST*MAX_PRODUCT*sizeof(int));
-  memcpy(dest->p.coef,  src->p.coef,    STATE_LAST*MAX_PRODUCT*sizeof(double));
+  memcpy(dest->p.coef,    src->p.coef,    STATE_LAST*MAX_PRODUCT*sizeof(double));
   
   return 0;
 }
@@ -937,7 +901,7 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
   /* fill the common part of the matrix */
   fill_matrix(matrix, e);
   
-  // delta ln(T) (for SP and HP only)
+  /* delta ln(T) (for SP and HP only) */
   if (P != TP)
   {
     for (j = 0; j < e->n_element; j++)
@@ -951,7 +915,7 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     }
   }
 
-  // right side
+  /* right side */
   for (j = 0; j < e->n_element; j++)
   {
     tmp = 0.0;
@@ -962,13 +926,13 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
                                     e->p.coef[k][GAS],
                                     e->n, e->T, e->P);
     
-    // b[i]
+    /* b[i] */
     for (k = 0; k < STATE_LAST; k++)
       for (i = 0; i < e->p.n[k]; i++)
         tmp -= product_element_coef( e->element[j], e->p.species[i][k]) *
           e->p.coef[i][k];
     
-    // b[i]o
+    /* b[i]o */
     for (i = 0; i < e->c.ncomp; i++)
       tmp += propellant_element_coef( e->element[j], e->c.molecule[i]) *
         e->c.coef[i];
@@ -979,20 +943,20 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
   /* delta ln(T) */
   if (P != TP)
   {
-    for (j = 0; j < e->p.n[CONDENSED]; j++) // row
+    for (j = 0; j < e->p.n[CONDENSED]; j++) /* row */
       matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 
         enthalpy_0( e->p.species[j][CONDENSED], e->T);
   }
   
-  // right side
-  for (j = 0; j < e->p.n[CONDENSED]; j++) // row
+  /* right side */
+  for (j = 0; j < e->p.n[CONDENSED]; j++) /* row */
   {
     matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + roff] =
       gibbs( e->p.species[j][CONDENSED], CONDENSED, e->p.coef[j][CONDENSED],
              e->n, e->T, e->P);  
   }
 
-  // delta ln(n)
+  /* delta ln(n) */
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  mol - e->n;
   
@@ -1006,7 +970,7 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
                                              + e->p.n[CONDENSED]+ 1] = tmp;
   }
   
-  // right side
+  /* right side */
   tmp = 0.0;
   for (k = 0; k < e->p.n[GAS]; k++)
   {
@@ -1018,11 +982,11 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
   matrix[e->n_element + e->p.n[CONDENSED] ][e->n_element + e->p.n[CONDENSED] 
                                             + roff] = e->n - mol + tmp;
 
-  // for enthalpy/pressure problem
+  /* for enthalpy/pressure problem */
   if (P == HP)
   {
     /* part with lagrangian multipliers */
-    for (i = 0; i < e->n_element; i++) // each column
+    for (i = 0; i < e->n_element; i++) /* each column */
     {   
       tmp = 0.0;
       for (k = 0; k < e->p.n[GAS]; k++)
@@ -1032,12 +996,12 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
       matrix[ e->n_element + e->p.n[CONDENSED] + 1 ][i] = tmp;      
     }
 
-    // Delta n
+    /* Delta n */
     for (i = 0; i < e->p.n[CONDENSED]; i++)
       matrix[ e->n_element + e->p.n[CONDENSED] + 1 ][i + e->n_element] = 
         enthalpy_0( e->p.species[i][CONDENSED], e->T);
 
-    // Delta ln(n)
+    /* Delta ln(n) */
     tmp = 0.0;
     for (k = 0; k < e->p.n[GAS]; k++)
       tmp += e->p.coef[k][GAS]*enthalpy_0( e->p.species[k][GAS], e->T ); 
@@ -1072,11 +1036,11 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
     matrix[e->n_element + e->p.n[CONDENSED] + 1][e->n_element +
                                                  e->p.n[CONDENSED] + 2] = tmp;
     
-  } // for entropy/pressure problem
+  } /* for entropy/pressure problem */
   else if (P == SP)
   {
     /* part with lagrangian multipliers */
-    for (i = 0; i < e->n_element; i++) // each column
+    for (i = 0; i < e->n_element; i++) /* each column */
     {   
       tmp = 0.0;
       for (k = 0; k < e->p.n[GAS]; k++)
@@ -1088,13 +1052,13 @@ int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
       matrix[ e->n_element + e->p.n[CONDENSED] + 1][i] = tmp;      
     }
     
-    // Delta n
+    /* Delta n */
     for (i = 0; i < e->p.n[CONDENSED]; i++)
       matrix[ e->n_element + e->p.n[CONDENSED] + 1 ][i + e->n_element] = 
         entropy_0( e->p.species[i][CONDENSED], e->T); /* ok for condensed */
     
 
-    // Delta ln(n)
+    /* Delta ln(n) */
     tmp = 0.0;
     for (k = 0; k < e->p.n[GAS]; k++)
       tmp += e->p.coef[k][GAS]*entropy(e->p.species[k][GAS], GAS,
@@ -1664,7 +1628,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     {
       fprintf(outputfile, "The solution doesn't converge\n\n");
       /* ?? */
-      //remove_condensed(&size, &n_condensed, equil);
+      /*remove_condensed(&size, &n_condensed, equil); */
     }
 
     if (convergence_ok || stop)

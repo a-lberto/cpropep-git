@@ -3,37 +3,45 @@
 #define performance_h
 
 #include "equilibrium.h"
+#include "derivative.h"
 
 #include "compat.h"
 
+typedef struct _frozen_state_t
+{
+  float temperature;
+  float pressure;
+  float velocity;
+} frozen_state_t;
+
+typedef struct _equilibrium_state_t
+{
+  float   temperature;
+  float   pressure;
+  float   velocity;
+
+  float   molar_mass;
+  deriv_t deriv;
+  
+} equilibrium_state_t;
+
 typedef struct _performance_t
 {
-
   bool frozen_ok;
   
   struct
   {
     float specific_impulse;
+    float molar_mass;
 
     float cp;     /* specific heat */
     float cp_cv;  /* ratio of specific heat */
     //float isex;
-    float molar_mass;
+
+    frozen_state_t chamber;
+    frozen_state_t throat;
+    frozen_state_t exit;
     
-    struct 
-    {
-      float temperature;
-      float pressure;
-      float velocity;
-    } throat;
-
-    struct
-    {
-      float temperature;
-      float pressure;
-      float velocity;
-    } exit;
-
   } frozen;
 
   bool equilibrium_ok;
@@ -42,34 +50,9 @@ typedef struct _performance_t
   {
     float specific_impulse;
 
-    //float cp;     /* specific heat */
-    //float cp_cv;  /* ratio of specific heat */
-    
-    struct 
-    {
-      float temperature;
-      float pressure;
-      float velocity;
-
-      float cp;
-      float cp_cv;
-      float isex;
-      float molar_mass;
-      
-    } throat;
-
-    struct
-    {
-      float temperature;
-      float pressure;
-      float velocity;
-
-      float cp;
-      float cp_cv;
-      float isex;
-      float molar_mass;
-      
-    } exit;
+    equilibrium_state_t chamber;
+    equilibrium_state_t throat;
+    equilibrium_state_t exit;
     
   } equilibrium;
 
@@ -81,7 +64,8 @@ typedef struct _performance_t
 int frozen_performance(equilibrium_t *e, performance_t *p,
                        double exit_pressure);
 
-int equilibrium_performance(equilibrium_t *e, performance_t *p,
+int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
+                            performance_t *p,
                             double exit_pressure);
 
 double mixture_specific_heat_0(equilibrium_t *e, double temp);
