@@ -89,4 +89,37 @@ PARAMETER: Same as for gauss
 ***************************************************************/
 int print_vec(double *vec, int neq);
 
+
+/**************************************************************
+FUNCTION: This function solve systems of ODE of the first order
+          with the Runge-Kutta method of the fourth order.
+
+PARAMETER: The first parameter is a pointer to the function we
+           we want to solve. This function take five parameter
+	   neq is the number of equations in the system
+	   time is the time at which we want to evaluate
+	   y is an array containing an initial value
+	   dy will store the result of the function
+	   ierr any error field
+
+	   step is the time variation
+	   duration is the total time of the simulation
+	   ic are the initial conditions
+	   **y is an array containing all the data
+
+COMMENTS: **y must be properly allocated, [number of points]X[neq]
+
+          It could be interesting to add a tolerance and use 
+	  variable step to reach our tolerance instead of using a 
+	  fixed step.
+
+AUTHOR: Antoine Lefebvre
+
+DATE: February 11
+*****************************************************************/
+int rk4( int (*f)(int neq, double time, double *y, double *dy, 
+		  int ierr), 
+	 int neq, double step, double duration, double *ic, double **y );
+
 #endif
+
