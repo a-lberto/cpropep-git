@@ -25,7 +25,7 @@
 /* #include <time.h> */
 
 #include "cpropep.h"
-
+#include "load.h"
 #include "libnum.h"
 
 
@@ -34,286 +34,54 @@ propellant_t	*propellant_list;
 thermo_t	*thermo_list;
 
 
-/***************************************************************************
-Initial format of thermo.dat:
-interval   variable   type	size	description
------------------------------------------------------------------------------
-(0, 18)    name	      string	18	compound name
-(18, 73)   comments   string	55	comment
-(73, 75)   nint	      int	2	the number of temperature intervals
-(75, 81)   id	      string	6	the material id
-81	   state      int	1	0 - GAS, else CONDENSED
-(82, 95)   weight     float	13	molecular weight
-(95, 108)  enth/heat  float	13	enthaply if nint == 0 
-                                        else heat of formation
-			...
-			rest of file
-			...
-***************************************************************************/
-
-int load_thermo(char *filename)
-{
-  FILE *fd;
-  
-  int i = 0;
-  int j, k, l;
-  
-  char buf[88], *buf_ptr, tmp[32], *tmp_ptr;
-  buf_ptr = &buf[0];
-  tmp_ptr = &tmp[0];
-  
-  /* open the file for reading */
-  if ((fd = fopen(filename, "r")) == NULL )
-    return 1;
-  
-  
-  while ((fgets(buf_ptr, 88, fd)) != NULL)
-  {
-    /* if the line is not commented */
-    if (*(buf_ptr) != '!')
-    {
-      /* Read in the name and the comments */
-      strncpy((thermo_list + i)->name, buf_ptr, 18);
-      trim_spaces((thermo_list + i)->name, 18);
-      
-      strncpy((thermo_list + i)->comments, buf_ptr + 18, 55);
-      trim_spaces((thermo_list + i)->comments, 55);
-      
-      if ((fgets(buf_ptr, 88, fd)) == NULL)  /* get a new line */
-      {
-        /* end of file occur */
-	break;
-      }
-      
-      strncpy(tmp_ptr, buf_ptr, 3);
-      (thermo_list + i)->nint = atoi(tmp_ptr);
-      
-      strncpy((thermo_list + i)->id, buf_ptr + 3, 6);
-      trim_spaces((thermo_list + i)->id, 6);
-      
-      /* get the chemical formula and coefficient */
-      /* grep the elements ( 5  max )*/
-      for (k = 0; k < 5; k++)
-      {
-	tmp[0] = buf[k * 8 + 10];
-	tmp[1] = buf[k * 8 + 11];
-	tmp[2] = '\0';
-		    
-	/* find the atomic number of the element */
-	for (l = 0; l < N_SYMB; l++)
-	{
-	  if (!strcmp(tmp, symb[l]))
-	  {
-	    (thermo_list + i)->elem[k] = l;
-	    break;
-	  };
-	};
-		    
-        // And the number of atoms
-	strncpy(tmp_ptr, buf_ptr + k * 8 + 13, 6);
-	tmp[6] = '\0';
-	
-	// Should this be an int?  If so, why is it stored in x.2 format?
-	(thermo_list + i)->coef[k] = (int) atof(tmp_ptr);
-      }
-	       
-      /* grep the state */
-      if (buf[51] == '0')
-        (thermo_list + i)->state = GAS;
-      else
-        (thermo_list + i)->state = CONDENSED;
-      
-      /* grep the molecular weight */
-      strncpy(tmp_ptr, buf_ptr + 52, 13);
-      tmp[13] = '\0';
-      (thermo_list + i)->weight = atof(tmp_ptr);
-      
-      /* grep the heat of formation (J/mol) or enthalpy if condensed */
-      /* The values are assigned in the if block following */
-      strncpy(tmp_ptr, buf_ptr + 65, 13);
-      tmp[13] = '\0';
-      
-      /* now get the data */
-      /* there is '(thermo_list + i)->nint' set of data */
-      if ((thermo_list + i)->nint == 0)
-      {
-	/* Set the enthalpy */
-	(thermo_list + i)->enth = atof(tmp_ptr);
-	
-	/* condensed phase, different info */
-	if ((fgets(buf_ptr, 88, fd)) == NULL) 
-	{
-	  /* end of file occur */
-	  break;
-	}
-			  
-	/* treat the line */
-	/* get the temperature of the assigned enthalpy */
-	strncpy(tmp_ptr, buf_ptr + 1, 10);
-	tmp[10] = '\0';
-	
-	(thermo_list + i)->temp = atof(tmp_ptr);
-      }
-      else 
-      { 
-	/* Set the heat of formation */
-	(thermo_list + i)->heat = atof(tmp_ptr);
-	
-	for (j = 0; j < (thermo_list + i)->nint; j++)
-	{
-	  /* Get the first line of three */
-	  if ( (fgets(buf_ptr, 88, fd)) == NULL) 
-	  {
-	    /* end of file occur */
-	    break;
-	  }
-	  
-	  /* low */
-	  strncpy(tmp_ptr, buf_ptr + 1, 10);
-	  tmp[10] = '\0';
-	  (thermo_list + i)->range[j][0] = atof(tmp_ptr);
-	  
-	  /* high */
-	  strncpy(tmp_ptr, buf_ptr + 11, 10);
-	  tmp[10] = '\0';
-	  (thermo_list + i)->range[j][1] = atof(tmp_ptr);
-	  
-	  tmp[0] = buf[22];
-	  tmp[1] = '\0';
-	  (thermo_list + i)->ncoef[j] = atoi(tmp_ptr);
-	  
-	  /* grep the exponent */
-	  for (l = 0; l < 8; l++)
-	  {
-	    strncpy(tmp_ptr, buf_ptr + l * 5 + 23, 5);
-	    tmp[5] = '\0';					     
-	    (thermo_list + i)->ex[j][l] = atoi(tmp_ptr);
-	  }
-	  
-	  /* HO(298.15) -HO(0) */
-	  strncpy(tmp_ptr, buf_ptr + 65, 15);
-	  tmp[15] = '\0';
-	  (thermo_list + i)->dho = atof(tmp);
-	  
-	  
-	  /* Get the second line of three */
-	  if ( (fgets(buf_ptr, 88, fd)) == NULL) 
-	  {
-	    /* end of file occur */
-	    break;
-	  }
-			       
-	  /* grep the first data line */
-	  /* there are 5 coefficients */
-	  for (l = 0; l < 5; l++)
-	  {
-	    strncpy(tmp_ptr, buf_ptr + l * 16, 16);
-	    tmp[16] = '\0';
-	    
-	    (thermo_list + i)->param[j][l] = atof(tmp_ptr);
-	  }
-	  
-	  /* Get the third line of three */
-	  if ( (fgets(buf_ptr, 88, fd)) == NULL) 
-	  {
-	    /* end of file occur */
-	    break;
-	  }
-	  
-	  /* grep the second data line */
-	  for (l = 0; l < 2; l++)
-	  {
-	    strncpy(tmp_ptr, buf_ptr + l * 16, 16);
-	    tmp[16] = '\0';
-	    
-	    (thermo_list + i)->param[j][l + 5] = atof(tmp_ptr);
-	    
-	  }
-	  
-	  for (l = 0; l < 2; l++)
-	  {
-	    strncpy(tmp_ptr, buf_ptr + l * 16 + 48, 16);
-	    tmp[16] = '\0';
-	    
-	    (thermo_list + i)->param[j][l + 7] = atof(tmp_ptr);
-	    
-	  }
-	}
-      }
-      i++;
-    }
-  }
-  
-  fclose(fd);
-  return i;
-
-}
+/****************************************************************
+VARIABLE: Contain the molar mass of element by atomic number
+          molar_mass[0] contain hydrogen and so on.
+*****************************************************************/
+const float molar_mass[100] = { 
+  1.00794, 4.00260, 6.941, 9.01218, 10.811, 12.011,
+  14.0067, 15.9994, 18.99840, 20.11797, 22.99977, 24.305, 
+  26.98154, 28.0855, 30.97376, 32.066, 35.4527, 39.948, 
+  39.0983, 40.078, 44.9559, 47.88, 50.9415, 51.996, 54.938, 
+  55.847, 58.9332, 58.6934, 63.546, 65.39, 69.723, 72.61, 
+  74.9216,
+  // we should correct the value
+  78.96,79.916, 83.80, 85.48, 87.63, 88.91, 91.22, 92.91, 95.95,
+  99.,101.1, 102.91, 106.4, 107.88, 112.41, 114.82, 118.7, 121.76,
+  127.61, 126.91, 131.3, 132.91, 137.36, 138.92, 140.13, 140.91,
+  144.27,147., 150.35, 152., 157.26, 158.93, 162.51,164.94,167.27,
+  168.94,173.04, 174.99, 178.50, 180.95, 183.86, 186.22, 190.2,
+  192.2,195.09, 197., 220.61, 204.39, 207.21, 208.99, 210., 210.,
+  222.,2.014,226.,92.906,232.,231.,238.,237.,237.,12.011,9.013,
+  10.82,24.32,26.98, 253.0 };
 
 
-int load_propellant(char *filename) 
-{
-  
-  FILE *fd;
-  
-  int i = 0;
-  int j, k;
-  
-  /* temporary string to store string in order to treat the informations */
-  char buf[88], *buf_ptr, tmp[32], *tmp_ptr;
-  buf_ptr = &buf[0];
-  tmp_ptr = &tmp[0];
-  
-  /* open the file for reading */
-  if ((fd = fopen(filename, "r")) == NULL )
-    return 1;
-  
-  while ((fgets(buf_ptr, 88, fd)) != NULL)
-  {
-    /* if the line is not commented */
-    if (!((*(buf_ptr) == '*') || (*(buf_ptr) == '+')))
-    {  
-      /* grep the name */
-      strncpy((propellant_list + i)->name, buf_ptr + 9, 29);
-      trim_spaces((propellant_list + i)->name, 29);
-      
-      for (j = 0; j < 6; j++)
-      {
-	tmp[0] = buf[j * 5 + 39];
-	tmp[1] = buf[j * 5 + 40];
-	tmp[2] = buf[j * 5 + 41];
-	tmp[3] = '\0';
-	
-	(propellant_list + i)->coef[j] = atoi(tmp);
-	
-	tmp[0] = buf[j * 5 + 42];
-	tmp[1] = buf[j * 5 + 43];
-	tmp[2] = '\0';
-		   
-	      /* find the atomic number of the element */
-	for (k = 0; k < N_SYMB; k++)
-	{
-	  if (!(strcmp(tmp, symb[k]))) 
-	  {
-	    (propellant_list + i)->elem[j] = k;
-	    break;
-	  }
-	}
-      }
-	  
-      strncpy(tmp_ptr, buf_ptr + 70, 5);
-      tmp[5] = '\0';		    
-      propellant_list[i].heat = atoi(tmp);
-      
-      strncpy(tmp_ptr, buf_ptr + 70, 5);
-      tmp[5] = '\0';
-      propellant_list[i].density = atof(tmp);
-      
-      i++;
-    }
-  }  
-  fclose(fd);     
-  return i;
-}
+/****************************************************************
+VARIABLE: Contain the symbol of the element in the same way as
+          for the molar mass.
+
+COMMENTS: It is use in the loading of the data file to recognize
+          the chemical formula.
+*****************************************************************/
+const char symb[N_SYMB][3] = {
+  "H ","HE","LI","BE","B ","C ","N ","O ",
+  "F ","NE","NA","MG","AL","SI","P ","S ","CL","AR","K ","CA",
+  "SC","TI","V ","CR","MN","FE","CO","NI","CU","ZN","GA","GE",
+  "AS","SE","BR","KR","RB","SR","Y ","ZR","NB","MO","TC","RU",
+  "RH","PD","AG","CD","IN","SN","SB","TE","I ","XE","CS","BA",
+  "LA","CE","PR","ND","PM","SM","EU","GD","TB","DY","HO","ER",
+  "TM","YB","LU","HF","TA","W ","RE","OS","IR","PT","AU","HG","TL",
+  "PB","BI","PO","AT","RN","FR","RA","AC","TH","PA","U ","NP",
+  "U6","U5","U1","U2","U3","U4","FM",
+  "E ", "D " }; /* the E stand for electron and D for deuterium*/
+
+
+
+/***************************************************************
+MACRO: molar gaz constant in J/(mol K)
+****************************************************************/
+const float  R = 8.314; 
+
 
 
 double enthalpy(int sp, float T)
@@ -327,15 +95,13 @@ double enthalpy(int sp, float T)
     if ((T >= s.range[i][0]) && (T < s.range[i][1])) 
     {
       /* parametric equation for dimentionless enthalpy */
-      val = -s.param[i][0] * pow(T, -2) + s.param[i][1] * pow(T, -1) * log(T)
-	+ s.param[i][2] + s.param[i][3] * T / 2 + s.param[i][4] * pow(T, 2) / 3
-	+ s.param[i][5] * pow(T, 3) / 4 + s.param[i][6] * pow(T, 4) / 5 + s.param[i][7] / T;
-      
-      return val * R * T; /* to convert from dimensionless to J/mol */
+      val = -s.param[i][0]*pow(T, -2) + s.param[i][1]*pow(T, -1)*log(T) + s.param[i][2] + s.param[i][3]*T/2 + s.param[i][4]*pow(T, 2)/3 + s.param[i][5]*pow(T, 3)/4 + s.param[i][6]*pow(T, 4)/5 + s.param[i][7]/T;
+
+      return (val * R * T); /* to convert from dimensionless to J/mol */
     }
   }
   
-  printf("Error: temperature out of range\n");
+  printf("Error: temperature out of range for %d: %s\n", sp, s.name);
   return 0;
 }
 
@@ -360,7 +126,7 @@ double entropy(int sp, float T)
     }
   }
   
-  printf("Error: temperature out of range\n");
+  printf("Error: temperature out of range for %d: %s\n", sp, s.name);
   return 0;
 }
 
@@ -383,21 +149,46 @@ double specific_heat(int sp, float T)
     }
   }
   
-  printf("Error: temperature out of range\n");
+  printf("Error: temperature out of range for %d: %s\n", sp, s.name);
   return 0;
 }
 
+/* 0 if out of range, 1 if ok */
+int temperature_check(int sp, float T)
+{
+  int i;
+  thermo_t s = thermo_list[sp];
+  for (i = 0; i < 4; i++)
+  {
+    if ((T >= s.range[i][0]) && (T < s.range[i][1]))
+      return 1;
+  }
+    return 0;
+}
+
+/* enthalpy variation between 298.15 and T */
 double delta_enthalpy(int sp, float T)
 {
   /* delta henthalpy in J/mol */
   return enthalpy(sp, T) - (thermo_list + sp)->heat;
 }
 
+
+/* J/mol */
 double gibbs(int sp, float T)
 {
-  /* G = H -TS */ 
+  /* G = H -TS */
   return enthalpy(sp, T) - T * entropy(sp, T);
 }
+
+
+/* kJ/mol */
+double potential(int sp, float T)
+{
+  /* u = Hf - TS */
+  return enthalpy(sp, T)/1000  - T *  entropy(sp, T)/1000;
+}
+
 
 /* give the molar mass of a propellant or pruduct in g/mol */
 /* for each element int the molecule, coefficient * molar mass of */
@@ -411,14 +202,11 @@ double propellant_molar_mass(int molecule)
   return ans;
 }
 
-
-
 /* give the heat of formation of a propellant in kJ/mol */
 double heat_of_formation(int molecule)
 {
   return (propellant_list + molecule)->heat * 4.1868 * propellant_molar_mass(molecule) / 1000;
 }
-
 
 
 
@@ -505,23 +293,6 @@ int print_propellant_list(void)
 }
 
 
-void trim_spaces(char *str, unsigned int len)
-{
-  /* Removes trailing ' ' characters.  If the entire string is ' ' characters, leaves one. */
-  unsigned int i;
-  
-  for (i = len - 1; i > 0; i--)
-  {
-    if (*(str + i) != ' ')
-    {
-      *(str + i + 1) = '\0';
-      return;
-    }
-  }
-  
-  *(str + 1) = '\0';
-}
-
 int list_element(composition_t comp, int *list)
 {
   int e = 0;
@@ -552,7 +323,7 @@ int list_element(composition_t comp, int *list)
   return e;
 }
 
-int list_product(int n_element, int *element_list, product_t *p)
+int list_product(int n_element, int *element_list, product_t *p, float T)
 {
   int i, j, k;
 
@@ -580,9 +351,14 @@ int list_product(int n_element, int *element_list, product_t *p)
     if (ok) /* add to the list */
     {
       st = thermo_list[j].state;
-      p->species[st][ p->n[st] ] = j;
-      p->n[st]++;
-      e++;
+
+      if (temperature_check(j, T) )  // if the molecule could exist at that temperature
+      {
+	p->species[st][ p->n[st] ] = j;
+	p->n[st]++;
+	e++;
+      }
+
     }
     ok = 1;
   }
@@ -599,15 +375,43 @@ int list_product(int n_element, int *element_list, product_t *p)
       printf("Reallocation of memory failed\n");
   }
 
-  // initialize the coef to the first approximation
+  // initialize the coef to zero
   for (j = 0; j < STATE_LAST; j++)
   {
     for (i = 0; i < p->n[j]; i++)
-      p->coef[j][i] = 0.1/p->n[j];
+      p->coef[j][i] = 0.01/p->n[j];
   }
   
   return e;
 }
+
+
+// find a first approximation of the composition
+int approx(int n_element, int *element_list, product_t *p, composition_t *c)
+{
+
+  // doesn't work for the moment.......
+  int i, j;
+
+  double mol_i = 0.0;
+  double mol_o = 0.0;
+
+  for (i = 0; i < c->ncomp; i++)
+    mol_i += c->coef[i];
+
+  for (i = 0; i < STATE_LAST; i++)
+    for (j = 0; j < p->n[i]; j++)
+      mol_o += p->coef[i][j];
+
+  j = (int)GAS;
+  for (i = 0; i < (p->n[GAS] + p->n[CONDENSED] - n_element); i++)
+    {
+    }
+  return 0;
+
+}
+
+
 
 int mem_alloc(void)
 {
@@ -668,7 +472,7 @@ int dealloc_product(product_t *p)
   return 0;
 }
 
-int element_coef(int element, int molecule)
+int product_element_coef(int element, int molecule)
 {
   int i;
   for (i = 0; i < 5; i++)
@@ -679,109 +483,245 @@ int element_coef(int element, int molecule)
   return 0;
 }
 
-
-int main(int argc, char *argv[])
+int propellant_element_coef(int element, int molecule)
 {
-  /* clock_t start, finish; */
-  
-  int i, j, k, n_elements, n_product;
-
-  double tmp;
-
-  int *element;   // will contain a list of all elements in composition
-
-  product_t product;        // structure to hold product information
-  composition_t propellant; // structure to hold propellant information
-
-  double **matrix; // matrix to hold coefficient for the system resolution
-  int size;
+  int i;
+  for (i = 0; i < 6; i++)
+  {
+    if (propellant_list[molecule].elem[i] == element)
+      return propellant_list[molecule].coef[i];
+  }
+  return 0;
+}
 
 
-  //double temp;
-  //int co2;
-  
-  /* allocate memory to hold data */
-  if (mem_alloc())
-    return 1;
-  
-  // initialisation of the element list
-  element = (int *)calloc(100, sizeof(int));
-  for (i = 0; i < 100; i++)
-    element[i] = -1;
+/* use the theory explain in
+Theorical Evaluation of chemical propellant
+by Roger Lawrence Wilkins
+Prentice-Hall International series in space technology */
+int fill_matrix(double **matrix, int n_elements, int *element, product_t p)
+{
 
-  initialize_product(&product);
+  int i, j, k;
+  double tmp, mol;
 
- 
-      
-  load_thermo("thermo.dat");
-  load_propellant("propellant.dat");
-  
-
-
-  propellant.ncomp = 2;
-  
-  //propellant.molecule[0] = 34;  // AL
-  
-  propellant.molecule[0] = 685; // O2
-  propellant.molecule[1] = 458; // H2
-
-  //propellant.molecule[0] = 766; // KCLO4
-  //propellant.molecule[1] = 788; // HTPB
-  
-  //propellant.coef[0] = GRAM_TO_MOL(10, propellant.molecule[0]);
-  propellant.coef[0] = GRAM_TO_MOL(70, propellant.molecule[0]);
-  propellant.coef[1] = GRAM_TO_MOL(30, propellant.molecule[1]);
-  
-  
-  n_elements = list_element(propellant, element); // ele contain the number of element
-  printf("%d\n", n_elements);
-  
-  for (i = 0; i < n_elements; i++)
-    printf("%s ", symb[element[i]] );
-  
-  printf("\n");
-  
-  n_product = list_product(n_elements, element, &product);  // pro contain the total number
-  // of product
-  printf("%d\n", n_product);
-  printf("%d\n", product.n[GAS]);
-  printf("%d\n", product.n[CONDENSED]);
-  
-  size = n_elements + product.n[CONDENSED] + 2;
-
-  // allocate the memory for the matrix
-  matrix = (double **) malloc (sizeof(double *) * size);
-  for (i = 0; i < size; i++)
-    matrix[i] = (double *) malloc (sizeof(double) * (size+1));
-
+// fill the matrix (part with the Lagrange multipliers)
   for (i = 0; i < n_elements; i++) // each column
   {
     for (j = 0; j < n_elements; j++) // each row
     {
       tmp = 0.0;
-      for (k = 0; k < product.n[GAS]; k++)
-  	tmp += element_coef( element[j], product.species[GAS][k]) * 
-	  element_coef( element[i], product.species[GAS][k] ) * 
-	  product.coef[GAS][k];
-      
+      for (k = 0; k < p.n[GAS]; k++)
+  	tmp += product_element_coef( element[j], p.species[GAS][k]) * 
+	  product_element_coef( element[i], p.species[GAS][k] ) * 
+	  p.coef[GAS][k];  
       matrix[j][i] = tmp;
+    }
+  }
+  
+  // u + 1
+  for (j = 0; j < n_elements; j++)
+  {
+    tmp = 0.0;
+    for (k = 0; k < p.n[GAS]; k++)
+  	tmp += product_element_coef( element[j], p.species[GAS][k]) * 
+	  p.coef[GAS][k];
+    matrix[j][ n_elements ] = tmp;
+  }
 
+  // X1c
+  for (i = 0; i < p.n[CONDENSED]; i++) // column
+  {
+    for (j = 0; j < n_elements; j++) // row
+    {
+      matrix[j][i + n_elements + 1] = product_element_coef(element[j], 
+						      p.species[CONDENSED][i]);
+    }
+  } 
+
+
+  mol = 0.0;
+  for (k = 0; k < p.n[GAS]; k++)
+    mol += p.coef[GAS][k];
+
+  // right side
+  for (j = 0; j < n_elements; j++)
+  {
+    tmp = 0.0;
+    for (k = 0; k < p.n[GAS]; k++)
+  	tmp += product_element_coef( element[j], p.species[GAS][k]) * 
+	  (( potential( p.species[GAS][k], 1200)/(R*1200) + log(136) ) +
+	   log( p.coef[GAS][k] / mol ))*p.coef[GAS][k];
+
+    // b[i]
+    for (k = 0; k < STATE_LAST; k++)
+      for (i = 0; i < p.n[k]; i++)
+	tmp += product_element_coef( element[i], p.species[k][i]) *
+	  p.coef[k][i];
+
+    matrix[j][ n_elements + p.n[CONDENSED] + 1 ] = tmp;  
+  }
+
+  // second big row
+  for (i = 0; i < n_elements; i++) // each column
+  {   
+      tmp = 0.0;
+      for (k = 0; k < p.n[GAS]; k++)
+  	tmp += product_element_coef( element[i], p.species[GAS][k] ) * 
+	  p.coef[GAS][k];
+
+      matrix[ n_elements ][i] = tmp;      
+  }
+
+  tmp = 0.0;
+  for (k = 0; k < p.n[GAS]; k++)
+  {
+    tmp += (( potential( p.species[GAS][k], 1200)/(R*1200) + log(136) ) +
+	    log( p.coef[GAS][k] / mol ))*p.coef[GAS][k];
+  }
+  matrix[ n_elements ][ n_elements + p.n[CONDENSED] + 1] = tmp;
+
+  //third row
+  for (i = 0; i < n_elements; i++) // column
+  {
+    for (j = 0; j < p.n[CONDENSED]; j++) // row
+    {
+      //      printf("%d\n",j);
+      matrix[j + n_elements + 1 ][i] = product_element_coef(element[i],
+					       p.species[CONDENSED][j]);
     }
   }
 
-  print_square_matrix(matrix, n_elements);
+  
+  // right side
+  for (j = 0; j < p.n[CONDENSED]; j++) // row
+  {
+    matrix[ j + n_elements + 1][ n_elements + p.n[CONDENSED] + 1] = 
+      potential( p.species[CONDENSED][j], 1200)/(R*1200);
+  
+  }
+
+  return 0;
+}
+
+
+/* to be wrtite */
+int new_approx(double *matrixsol, int n_element, int *element, product_t p ) 
+{ 
+  double mol_x;
+  double mol_y;
+
+  return 0;
+}
+
+
+int main(int argc, char *argv[])
+{
+  
+  int i, n_elements, n_product;
+  int *element;   // will contain a list of all elements in composition
+
+  product_t     product;    // structure to hold product information
+  composition_t propellant; // structure to hold propellant information
+
+  double *sol;     // solution of the matrix
+  double **matrix; // matrix to hold coefficient for the system resolution
+  int    size;     // the size of the matrix
+
+
+  int ch4, n2, hcn, h2, h2o;
+
+  /* allocate memory to hold data */
+  if (mem_alloc())
+    return 1;
+  
+  // initialisation of the element list
+  element = (int *)malloc(sizeof(int) * 100);
+  for (i = 0; i < 100; i++)
+    element[i] = -1;
+
+  initialize_product(&product);
+
+  load_thermo("thermo.dat");
+  load_propellant("propellant.dat");
+  
+
+  /* Create a propellant */
+  propellant.ncomp = 2;
+  //propellant.molecule[0] = 34;  // AL
+  propellant.molecule[0] = 685; // O2
+  propellant.molecule[1] = 458; // H2
+  //propellant.molecule[0] = 766; // KCLO4
+  //propellant.molecule[1] = 788; // HTPB
+  //propellant.coef[0] = GRAM_TO_MOL(10, propellant.molecule[0]);
+  propellant.coef[0] = GRAM_TO_MOL(70, propellant.molecule[0]);
+  propellant.coef[1] = GRAM_TO_MOL(30, propellant.molecule[1]);
+  
+
+  // n_elements contain the number of element
+  n_elements = list_element(propellant, element); 
+  printf("%d different elements in the propellant\n", n_elements);
+  
+  /* Print those elements */
+  for (i = 0; i < n_elements; i++)
+    printf("%s ", symb[element[i]] );
+  printf("\n");
+  
+
+  // n_product contain the total number possible product of combustion
+  // at temperature (1200)
+  n_product = list_product(n_elements, element, &product, 1200);  
+
+  printf("%d possible combustion product\n", n_product);
+  printf("%d gazeous species\n", product.n[GAS]);
+  printf("%d condensed species\n", product.n[CONDENSED]);
+  
+
+  // the size of the matrix to solve the problem
+  size = n_elements + product.n[CONDENSED] + 1;
+
+  // allocate the memory for the matrix
+  matrix = (double **) calloc (size, sizeof(double *));
+  for (i = 0; i < size; i++)
+    matrix[i] = (double *) calloc (size+1, sizeof(double));
+
+  sol = (double *) calloc (size, sizeof(double));
+
+
+  //fill_matrix(matrix, n_elements, element, product);
+  //print_matrix(matrix, size);
+  //gauss(matrix, sol, size);
+  //print_vec(sol, size);
  
 
+  ch4 = thermo_search("C3H6");
+  h2o = thermo_search("H2O(L)");
+  n2  = thermo_search("N2");
+  hcn = thermo_search("HCN");
+  h2  = thermo_search("H");
 
-
-  
-  //co2 = thermo_search("CO2");
-    
   //print_thermo_list();
-  //  print_propellant_list();
-    /*
-    print_thermo_info( co2 );
+  //print_propellant_list();
     
+  //print_thermo_info( h2 );
+
+
+  //for (i = 0; i < 32; i++)
+  //  printf("enthalpy à %d: %f\n", i*100, enthalpy( h2, i*100));
+
+
+  //printf("enthalpy à 999: %f\n", enthalpy( ch4, 999));
+  //printf("enthalpy à 1500: %f\n", enthalpy( ch4, 1500));
+  //printf("enthalpy à 1500: %f\n", enthalpy( hcn, 1500));
+  //printf("entropy: %f\n", entropy( ch4, 1500));
+  //printf("specific heat: %f\n", specific_heat( ch4 , 300));
+
+
+  //printf("%f\n",  potential(h2, 4000));
+
+
+
+  /*
     temp = enthalpy(co2, 1700);
     printf("%f\n", delta_enthalpy(co2, 1800));
     printf("%f\n", enthalpy(co2, 1800));    
