@@ -1,4 +1,3 @@
-
 CC     = gcc
 COPT   = -g -Wall -O3 #-pg 
 
@@ -14,19 +13,15 @@ INCDIR = -I$(ROOT)/libnum/include/ \
          -I$(ROOT)/libcompat/include/
 
 DEF    = -DGCC
-
 PROG   = cpropep
-
 OBJS   = cpropep.o
-
-.SUFFIXES: .c
 
 all: $(PROG)
 
 .c.o:
 	$(CC) $(DEF) $(INCDIR) $(COPT) -c $*.c -o $*.o
 
-$(PROG): $(OBJS) $(LIBNAME)
+$(PROG): $(OBJS)
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
 
 clean:

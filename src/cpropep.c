@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.1 2000/10/13 21:06:27 antoine Exp $ */
+/* $Id: cpropep.c,v 1.2 2001/02/22 19:50:10 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -11,7 +11,7 @@
 #include <string.h>
 #include <math.h>
 #include <malloc.h>
-#include <time.h>
+//#include <time.h>
 
 #ifdef GCC
 #include <unistd.h>
@@ -34,20 +34,15 @@
 #define version "1.0"
 #define date    "10/07/2000"
 
-#define CHAMBER_MSG     "Time spent for computing chamber equilibrium"
-#define FROZEN_MSG      "Time spent for computing frozen performance"
-#define EQUILIBRIUM_MSG "Time spent for computing equilibrium performance"
+//#define CHAMBER_MSG     "Time spent for computing chamber equilibrium"
+//#define FROZEN_MSG      "Time spent for computing frozen performance"
+//#define EQUILIBRIUM_MSG "Time spent for computing equilibrium performance"
 
 #define CONF_FILE "cpropep.conf"
 
-#define TIME(function, msg) timer = clock(); function;\
-                            fprintf(outputfile,\
-                                    "%s: %f s\n\n", msg,\
-                                    (double)(clock() - timer)/CLOCKS_PER_SEC)
 
-
-#undef TIME
-#define TIME(function, msg) function;
+//#undef TIME
+//#define TIME(function, msg) function;
 
 #define MAX_CASE 10
 
@@ -153,9 +148,8 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
 
           if (n_case >= MAX_CASE)
           {
-            fprintf(outputfile,
-          "Warning: Too many different case, maximum is %d: deleting case.\n",
-                   MAX_CASE+1);
+            fprintf(outputfile, "Warning: Too many different case, "
+                    "maximum is %d: deleting case.\n", MAX_CASE+1);
             section = 100;
             break;
           }
@@ -170,16 +164,6 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
           {
             section = 1;
           }
-//          else if (strncmp(buffer, "thermo_file", 10) == 0)
-//          {
-//            printf("New path...\n");
-//            sscanf(buffer, "%s %s", variable, thermo_file);
-//          }
-//          else if (strncmp(buffer, "propellant.dat", 10) == 0)
-//          {
-//            printf("hehe\n");
-//            sscanf(buffer, "%s %s", variable, propellant_file); 
-//          }
           else
           { 
             if (strncmp(buffer, "TP", 2) == 0)
@@ -370,6 +354,7 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
 int main(int argc, char *argv[])
 {
   int i, c, v = 0;
+  int err_code;
   char filename[FILENAME_MAX];
   FILE *fd = NULL;
 
@@ -382,7 +367,7 @@ int main(int argc, char *argv[])
 
   double exit_pressure;
 
-  clock_t timer;
+//  clock_t timer;
 
   char variable[64];
   char path[FILENAME_MAX];
@@ -608,7 +593,11 @@ int main(int argc, char *argv[])
     global_verbose = v;
 
     list_element(equil);
-    list_product(equil);
+    if ((err_code = list_product(equil)) < 0)
+    {
+      print_error_message(err_code);
+      return err_code;
+    }
     
     i = 0;
     while ((case_list[i].p != -1) && (i <= MAX_CASE))
@@ -639,9 +628,12 @@ int main(int argc, char *argv[])
             equil->properties.P = case_list[i].pressure;
             
             print_propellant_composition(equil);
-            TIME(if (equilibrium(equil, TP)) break,
-                 CHAMBER_MSG);
-
+            if ((err_code = equilibrium(equil, TP)) < 0)
+            {
+              print_error_message(err_code);
+              return err_code;
+            }
+              
             print_product_properties(equil, 1);
             print_product_composition(equil, 1);
             break;
@@ -657,8 +649,11 @@ int main(int argc, char *argv[])
             equil->properties.P = case_list[i].pressure;
                         
             print_propellant_composition(equil);
-            TIME(if (equilibrium(equil, HP)) break,
-                 CHAMBER_MSG);
+            if ((err_code = equilibrium(equil, HP)) < 0)
+            {
+              print_error_message(err_code);
+              return err_code;
+            }
             
             print_product_properties(equil, 1);
             print_product_composition(equil, 1);
@@ -684,12 +679,19 @@ int main(int argc, char *argv[])
             
             print_propellant_composition(frozen);
 
-            TIME(if (equilibrium(frozen, HP)) break,
-                 CHAMBER_MSG);
-
-            TIME(frozen_performance(frozen, case_list[i].exit_cond_type,
-                                    case_list[i].exit_condition),
-                 FROZEN_MSG);
+            if ((err_code = equilibrium(equil, HP)) < 0)
+            {
+              print_error_message(err_code);
+              return err_code;
+            }
+            
+            if ((err_code =
+                 frozen_performance(frozen, case_list[i].exit_cond_type,
+                                    case_list[i].exit_condition)) < 0)
+            {
+              print_error_message(err_code);
+              return err_code;
+            }
             
             print_product_properties(frozen, 3);
             print_performance_information(frozen, 3);
@@ -717,12 +719,20 @@ int main(int argc, char *argv[])
             
             print_propellant_composition(shifting);
             
-            TIME(if (equilibrium(shifting, HP)) break,
-                 CHAMBER_MSG);
+            if ((err_code = equilibrium(shifting, HP)) < 0)
+            {
+              print_error_message(err_code);
+              return err_code;
+            }
 
-            TIME(shifting_performance(shifting, case_list[i].exit_cond_type,
-                                      case_list[i].exit_condition),
-                 EQUILIBRIUM_MSG);
+            if ((err_code = shifting_performance(shifting,
+                                                 case_list[i].exit_cond_type,
+                                                 case_list[i].exit_condition))
+                < 0)
+            {
+              print_error_message(err_code);
+              return err_code;
+            }
 
             print_product_properties(shifting, 3);
             print_performance_information(shifting, 3);
