@@ -1,26 +1,30 @@
 
-CC   = gcc
-COPT = -g -Wall -O3 #-pg -O6\
-# -mpentium -ffast-math -funroll-loops -fnonnull-objects\
-# -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
-# -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer
+CC     = gcc
+COPT   = -g -Wall -O3 #-pg 
 
-LIB  =  -lcpropep -lthermo -lm -lnum #-lcruft -lf2c
-LIBDIR = -L../../libnum/ -L../../libthermo/src -L../../libcpropep/src 
-INCLUDEDIR = -I../../libnum/ -I../../libthermo/include -I../../libcpropep/include -I../../libcompat/include
+LIB    = -lcpropep -lthermo -lnum -lm  
+ROOT   = ../..
+LIBDIR = -L$(ROOT)/libnum/lib \
+         -L$(ROOT)/libthermo/lib \
+         -L$(ROOT)/libcpropep/lib
 
-DEF = -DGCC #-DTRUE_ARRAY
+INCDIR = -I$(ROOT)/libnum/include/ \
+         -I$(ROOT)/libthermo/include/ \
+         -I$(ROOT)/libcpropep/include/ \
+         -I$(ROOT)/libcompat/include/
 
-PROG = cpropep
+DEF    = -DGCC
 
-OBJS = cpropep.o
+PROG   = cpropep
+
+OBJS   = cpropep.o
 
 .SUFFIXES: .c
 
 all: $(PROG)
 
 .c.o:
-	$(CC) $(DEF) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
+	$(CC) $(DEF) $(INCDIR) $(COPT) -c $*.c -o $*.o
 
 $(PROG): $(OBJS) $(LIBNAME)
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
