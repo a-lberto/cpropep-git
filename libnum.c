@@ -22,211 +22,214 @@
 
 int gauss(double **matrix, double *solution, int neq)
 {   
-     int i = 0;
-     int j = 0;
-     int k = 0;
-     double m; /* multiplier */
-     double s = 0.0; /* need to store a sommation */
-     double temp[neq+1];
-
-     for (k = 0; k < neq-1; k++)
-     {
-	  /* find the smallest j>=k such that a[j][k] != 0 */
-	  for (j = k; j < neq; j++)
+  int i = 0;
+  int j = 0;
+  int k = 0;
+  double m; /* multiplier */
+  double s = 0.0; /* need to store a sommation */
+  double temp[neq+1];
+  
+  for (k = 0; k < neq-1; k++)
+  {
+    /* find the smallest j>=k such that a[j][k] != 0 */
+    for (j = k; j < neq; j++)
+    {
+      if (!(matrix[j][k] == 0))
+      {
+	if (!(j == k))  /* exchange the contents of row j and k */
+	{
+	  for (i = 0; i <= neq; i++)
 	  {
-	       if (!(matrix[j][k] == 0))
-	       {
-		    if (!(j == k))  /* exchange the contents of row j and k */
-		    {
-			 for (i = 0; i <= neq; i++)
-			 {
-			      temp[i] = matrix[j][i];
-			      matrix[j][i] = matrix[k][i];
-			      matrix[k][i] = temp[i];
-			 }
-		    }
-		    /* the matrix is ready for the next step */
-		    break;
-	       }
-	       printf("No unique solution exists.\n");
-	       return -1;
+	    temp[i] = matrix[j][i];
+	    matrix[j][i] = matrix[k][i];
+	    matrix[k][i] = temp[i];
 	  }
-
-	  for (j = k+1; j < neq; j++)
-	  {
-	       /* multiplier */
-	       m = matrix[j][k]/matrix[k][k];
-
-	       for (i = k; i <= neq; i++)
-	       {
-		    matrix[j][i] = matrix[j][i] - m*matrix[k][i];
-	       }
-	  }
-     }
-
-     if (matrix[neq-1][neq-1] == 0) 
-     {
-	  printf("No unique solution exists.\n");
-	  return -1;
-     }
-     else
-     {
-	  solution[neq-1] = matrix[neq-1][neq]/matrix[neq-1][neq-1];
-
-	  for (j = neq-2; j >= 0; j--)
-	  {
-	       s = 0.0;
-	       for (i = j + 1; i < neq; i++)
-		    s += matrix[j][i]*solution[i];
-
-	       solution[j] = (matrix[j][neq] - s)/matrix[j][j];
-	  }
-     }
-     return 0;
+	}
+	/* the matrix is ready for the next step */
+	break;
+      }
+      printf("No unique solution exists.\n");
+      return -1;
+    }
+    
+    for (j = k+1; j < neq; j++)
+    {
+      /* multiplier */
+      m = matrix[j][k]/matrix[k][k];
+      
+      for (i = k; i <= neq; i++)
+      {
+	matrix[j][i] = matrix[j][i] - m*matrix[k][i];
+      }
+    }
+  }
+  
+  if (matrix[neq-1][neq-1] == 0) 
+  {
+    printf("No unique solution exists.\n");
+    return -1;
+  }
+  else
+  {
+    solution[neq-1] = matrix[neq-1][neq]/matrix[neq-1][neq-1];
+    
+    for (j = neq-2; j >= 0; j--)
+    {
+      s = 0.0;
+      for (i = j + 1; i < neq; i++)
+	s += matrix[j][i]*solution[i];
+      
+      solution[j] = (matrix[j][neq] - s)/matrix[j][j];
+    }
+  }
+  return 0;
 }
 
 /* LU-Factorisation, Doolittle's method */
 int lu(double **matrix, double *solution, int neq)
 {
-     int i, j, s;
-     double tmp = 0.0;
+  int i, j, s;
+  double tmp = 0.0;
+  
+  /* L is a lower triangular matrix with diagonal set to one */
+  double **L;
+  /* U is an upper triangular matrix */
+  double **U;
+  
+  /* temporary vector Ly = b, Ux = y */
+  double *y;
+  
+  
+  y = (double *)calloc(neq, sizeof(double));
+  
+  L = (double **)calloc(neq, sizeof(double*));
+  U = (double **)calloc(neq, sizeof(double*));
+  
+  
+  for (i = 0; i < neq; i++)
+  {
+    L[i] = (double *)calloc(neq, sizeof(double));
+    U[i] = (double *)calloc(neq, sizeof(double));
+  }
+  
+  /* set the diagonal to 1 */
+  for (i = 0; i < neq; i++)
+    L[i][i] = 1;
 
-     /* L is a lower triangular matrix with diagonal set to one */
-     double **L;
-     /* U is an upper triangular matrix */
-     double **U;
-
-     /* temporary vector Ly = b, Ux = y */
-     double *y;
-
-
-     y = (double *)calloc(neq, sizeof(double));
-
-     L = (double **)calloc(neq, sizeof(double*));
-     U = (double **)calloc(neq, sizeof(double*));
-
-
-     for (i = 0; i < neq; i++)
-     {
-	  L[i] = (double *)calloc(neq, sizeof(double));
-	  U[i] = (double *)calloc(neq, sizeof(double));
-     }
-
-     /* set the diagonal to 1 */
-     for (i = 0; i < neq; i++){
-	  L[i][i] = 1;
-     }
- 
-     /* LU Factorisation */
-     for (i = 0; i < neq; i++)
-     {
-	  U[0][i] = matrix[0][i];
-	  
-	  if (i > 0)
-	  {
-	       for (j = 1; j <= i; j++)
-	       {
-		    tmp = 0.0;
-		    for (s = 0; s < j; s++)
-			 tmp += L[j][s]*U[s][i];
-
-		    U[j][i] = matrix[j][i] - tmp;
-	       }
-	  }
-
-	  for (j = i + 1; j < neq; j++)
-	  {
-	       if (U[i][i] == 0.0)
-	       {
-		    printf("No unique solution exist.\n");
-		    return -1;
-	       }
-	       if (i == 0)
-		    L[j][i] = matrix[j][i]/U[i][i];
-
-	       else
-	       {
-		    tmp = 0.0;
-		    for (s = 0; s < i; s++)
-			 tmp += L[j][s]*U[s][i];
-
-		    L[j][i] = (matrix[j][i] - tmp)/U[i][i];
-	       }
-	  }
-     }
-     /* End LU-Factorisation */
-
-     /* substitution  for y    Ly = b*/
-     for (i = 0; i < neq; i++)
-     {
-	  tmp = 0.0;
-
-	  for (j = 0; j < i; j++)
-	       tmp += L[i][j]*y[j];
-	  
-	  y[i] = matrix[i][neq] - tmp;
-     }
-
-     /* substitution for x   Ux = y*/
-     for (i = neq-1; i >=0; i--)
-     {
-	  if (U[i][i] == 0.0);
-	  {
-	       printf("No unique solution exist.\n");
-	       return -1;
-	  }
-
-	  tmp = 0.0;
-	  for (j = i; j < neq; j++)
-	       tmp += U[i][j]*solution[j];
-
-	  solution[i] = (y[i] - tmp)/U[i][i];
-     }
-
-     //print_square_matrix(L, neq);
-     //print_square_matrix(L, neq);
-
-     free (y);
-     free (L);
-     free (U);
-     return 0;      
+  
+  /* LU Factorisation */
+  for (i = 0; i < neq; i++)
+  {
+    U[0][i] = matrix[0][i];
+	 
+    if (i > 0)
+    {
+      for (j = 1; j <= i; j++)
+      {
+	tmp = 0.0;
+	for (s = 0; s < j; s++)
+	  tmp += L[j][s]*U[s][i];
+	
+	U[j][i] = matrix[j][i] - tmp;
+      }
+    }
+	 
+    for (j = i + 1; j < neq; j++)
+    {
+      if (U[i][i] == 0.0)
+      {
+	printf("No unique solution exist.\n");
+	return -1;
+      }
+      if (i == 0)
+	L[j][i] = matrix[j][i]/U[i][i];
+      
+      else
+      {
+	tmp = 0.0;
+	for (s = 0; s < i; s++)
+	  tmp += L[j][s]*U[s][i];
+	
+	L[j][i] = (matrix[j][i] - tmp)/U[i][i];
+      }
+    }
+  }
+  /* End LU-Factorisation */
+  
+  /* substitution  for y    Ly = b*/
+  for (i = 0; i < neq; i++)
+  {
+    tmp = 0.0;
+    
+    for (j = 0; j < i; j++)
+      tmp += L[i][j]*y[j];
+    
+    y[i] = matrix[i][neq] - tmp;
+  }
+  
+  /* substitution for x   Ux = y*/
+  for (i = neq-1; i >=0; i--)
+  {
+    if (U[i][i] == 0.0)
+    {
+      printf("No unique solution exist.\n");
+      return -1;
+    }
+    
+    tmp = 0.0;
+    for (j = i; j < neq; j++)
+      tmp += U[i][j]*solution[j];
+    
+    solution[i] = (y[i] - tmp)/U[i][i];
+  }
+     
+  /*print_square_matrix(L, neq);*/
+  /*print_square_matrix(L, neq);*/
+     
+  free (y);
+  free (L);
+  free (U);
+  return 0;      
 }
 
 int print_square_matrix(double **matrix, int neq)
 {
-     int i = 0;
-     int j = 0;
-     
-     for (i = 0; i < neq; i++)
-     {
-	  for (j = 0; j < neq; j++)
-	       printf("%f ", matrix[i][j]);
-	  printf("\n");
-     }
-     printf("\n");
-     return 0;
+  int i = 0;
+  int j = 0;
+  
+  for (i = 0; i < neq; i++)
+  {
+    for (j = 0; j < neq; j++)
+      printf("%f ", matrix[i][j]);
+    printf("\n");
+  }
+  printf("\n");
+  return 0;
 }
 
 int print_matrix(double **matrix, int neq)
 {
-     int i = 0;
-     int j = 0;
-
-     for (i = 0; i < neq; i++)
-     {
-	  for (j = 0; j <= neq; j++)
-	       printf("%f ", matrix[i][j]);
-	  printf("\n");
-     }
-     printf("\n");
-     return 0;
+  int i = 0;
+  int j = 0;
+  
+  for (i = 0; i < neq; i++)
+  {
+    for (j = 0; j <= neq; j++)
+      printf("%f ", matrix[i][j]);
+    printf("\n");
+  }
+  printf("\n");
+  return 0;
 }
 
 int print_vec(double *vec, int neq)
 {
-     int i;
-     for (i = 0; i < neq; i++)
-	  printf("%f ", vec[i]);
-     printf("\n");
-     return 0;
+  int i;
+  for (i = 0; i < neq; i++)
+    printf("%f ", vec[i]);
+  printf("\n");
+  return 0;
 }
+
+
+

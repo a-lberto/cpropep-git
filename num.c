@@ -27,68 +27,60 @@
 int main(void)
 {
 
-     /* for timing */
-//     clock_t start, finish;
+  /* for timing */
+  /* clock_t start, finish; */
 
-
-     const int neq = 3;
-
-     int i = 0;
-
-     double **mat;
-     double *ans;
-
-//     double mat[2][3];
-//     double ans[2];
-
-     mat = (double **)calloc(neq, sizeof(double*));
-     for (i = 0; i < neq; i++)
-     {
-     mat[i] = (double *)calloc(neq+1, sizeof(double));
-     }
-     ans = (double *)calloc(neq, sizeof(double));
-
-     mat[0][0] = 4;
-     mat[0][1] = 10;
-     mat[0][2] = -2;
-     mat[0][3] = -20;
-//     mat[0][4] = 54;
-
-     mat[1][0] = -1;
-     mat[1][1] = -15;
-     mat[1][2] = 3;
-     mat[1][3] = 30;
-//     mat[1][4] = 0;
-
-     mat[2][0] = 0;
-     mat[2][1] = 25;
-     mat[2][2] = -5;
-     mat[2][3] = -50;
-//     mat[2][4] = 2;
-
-//     mat[3][0] = 43;
-//     mat[3][1] = 0;
-//     mat[3][2] = 76;
-//     mat[3][3] = 0;
-//     mat[3][4] = 77;
-
-     print_matrix(mat, neq); 
-
-     lu(mat, ans, neq);
   
-//     gauss(mat, ans, neq);
+  const int neq = 3;
+  int i = 0;
+  
+  double **mat;
+  double *ans;
+
+
+  mat = (double **)calloc(neq, sizeof(double*));
+  for (i = 0; i < neq; i++)
+  {
+    mat[i] = (double *)calloc(neq+1, sizeof(double));
+  }
+  ans = (double *)calloc(neq, sizeof(double));
+
+  mat[0][0] = 4;
+  mat[0][1] = 10;
+  mat[0][2] = -2;
+  mat[0][3] = -20;
+  /* mat[0][4] = 54; */
+
+  mat[1][0] = -1;
+  mat[1][1] = -15;
+  mat[1][2] = 3;
+  mat[1][3] = 30;
+  /* mat[1][4] = 0; */
+  
+  mat[2][0] = 0;
+  mat[2][1] = 25;
+  mat[2][2] = -5;
+  mat[2][3] = -50;
+  /* mat[2][4] = 2; */
+
+  /* mat[3][0] = 43; */
+  /* mat[3][1] = 0; */
+  /* mat[3][2] = 76; */
+  /* mat[3][3] = 0; */
+  /* mat[3][4] = 77; */
+
+  print_matrix(mat, neq); 
+  
+  lu(mat, ans, neq);
+  
+  /* gauss(mat, ans, neq); */
      
-
-
-
-     print_matrix(mat, neq);
-     print_vec(ans, neq);
-
-     //free(mat[1]);
-     //free(mat[0]);
-     free(mat);
-     free(ans);
-     return 0;
+  print_matrix(mat, neq);
+  print_vec(ans, neq);
+  
+  free(mat);
+  free(ans);
+  return 0;
 
 }
 
