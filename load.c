@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "cpropep.h"
+#include "equilibrium.h"
 #include "load.h"
 
 

@@ -9,7 +9,7 @@ INCLUDEDIR = -I../libnum/
 
 PROG = cpropep
 
-OBJS = cpropep.o load.o
+OBJS = equilibrium.o cpropep.o load.o
 
 .SUFFIXES: .c
 

@@ -1,7 +1,7 @@
-#ifndef cpropep_h
-#define cpropep_h
+#ifndef equilibrium_h
+#define equilibrium_h
 
-/* cpropep.h  -  Calculation of Complex Chemical Equilibrium           */
+/* equilibrium.h  -  Calculation of Complex Chemical Equilibrium           */
 /* Copyright (C) 2000                                                  */
 /* Antoine Lefebvre <antoine.lefebvre@polymtl.ca                       */
 /* Mark Pinese <ida.pinese@bushnet.qld.edu.au>                         */
@@ -505,6 +505,9 @@ FUNCTION: This function compute the equilibrium composition at
 AUTHOR:   Antoine Lefebvre
 ******************************************************************/
 int equilibrium(equilibrium_t *equil);
+
+
+double product_molar_mass(equilibrium_t *e);
 
 #endif
 
