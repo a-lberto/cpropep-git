@@ -31,8 +31,8 @@ $(PROG): $(LIBNUM) $(OBJS)
 
 
 clean:
-	rm -f *.o *~
+	rm -f $(PROG) *.o *~
 
 deep-clean: clean
-	rm -f $(PROG) ../lib/$(LIBNUM)
+	rm -f ../lib/$(LIBNUM)
 
