@@ -34,6 +34,8 @@ enum
 #define M_TO_CM             100.0
 #define M_TO_IN              39.370079
 
+#define IN_TO_M               0.0254
+
 /* Surface */
 
 #define M2_TO_CM2         10000.0
@@ -53,6 +55,6 @@ enum
 
 /* newton to pound-force */
 #define N_TO_LBF         0.22480894
-
+#define LBF_TO_N         4.4482216
 
 #endif

@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
+/* $Id: cpropep.c,v 1.2 2000/07/19 02:13:03 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -14,8 +14,9 @@
 #include <time.h>
 
 #include "getopt.h"
-#include "load.h"
 
+#ifdef GCC
+#include "load.h"
 #include "equilibrium.h"
 #include "performance.h"
 #include "derivative.h"
@@ -26,6 +27,22 @@
 #include "conversion.h"
 #include "compat.h"
 #include "return.h"
+#endif /* GCC */
+
+#ifdef _MSC_VER
+#include "..\lib\load.h"
+
+#include "..\lib\equilibrium.h"
+#include "..\lib\performance.h"
+#include "..\lib\derivative.h"
+#include "..\lib\thermo.h"
+
+#include "..\lib\print.h"
+
+#include "..\lib\conversion.h"
+#include "..\lib\compat.h"
+#include "..\lib\return.h"
+#endif /* _MSC_VER */
 
 #define version "1.0"
 #define date    "10/07/2000"
@@ -34,13 +51,13 @@
 #define FROZEN_MSG      "Time spent for computing frozen performance"
 #define EQUILIBRIUM_MSG "Time spent for computing equilibrium performance"
 
+#define CONF_FILE "cpropep.conf"
+
 #define TIME(function, msg) timer = clock(); function;\
                             fprintf(outputfile,\
                                     "%s: %f s\n\n", msg,\
                                     (double)(clock() - timer)/CLOCKS_PER_SEC)
 
-#define THERMO_FILE     "thermo.dat"
-#define PROPELLANT_FILE "propellant.dat"
 
 #undef TIME
 #define TIME(function, msg) function;
@@ -61,6 +78,10 @@ char case_name[][80] = {
   "Frozen equilibrium performance evaluation",
   "Shifting equilibrium performance evaluation"
 };
+
+char thermo_file[FILENAME_MAX] = "thermo.dat";
+char propellant_file[FILENAME_MAX] = "propellant.dat";
+
 
 typedef struct _case_t
 {
@@ -97,18 +118,29 @@ void info(char **argv)
 
 void usage(void)
 {
-  printf("Program arguments:\n");
+	/*
+	Usage:
+		cpropep -f infile [-voe]
+		cpropep -pqtuh
+
+	Arguments:
+  */
+
+  printf("Usage:");
+  printf("\n\tcpropep -f infile [-voe]");
+  printf("\n\tcpropep -pqtuh");
+
+  printf("\n\nArguments:\n");
   printf("-f file \t Perform an analysis of the propellant data in file\n");
   printf("-v num  \t Verbosity setting, 0 - 10\n");
-  printf("-o file \t Name of the results file, stdout if ommit\n");
-  printf("-e file \t Name of the file to store error messages,\
-stdout if ommit\n");
+  printf("-o file \t Results file, stdout if omitted\n");
+  printf("-e file \t Error file, stdout if omitted\n");
   printf("-p      \t Print the propellant list\n");
-  printf("-q num  \t Print information about propellant number num\n");
+  printf("-q num  \t Print information about propellant component number num\n");
   printf("-t      \t Print the combustion product list\n");
   printf("-u num  \t Print information about product number num\n");
   printf("-h      \t Print help\n");
-  printf("-i      \t Print informations\n");
+  printf("-i      \t Print program information\n");
 }
 
 
@@ -147,10 +179,20 @@ int load_input(FILE *fd, equilibrium_t *e, case_t *t, double *pe)
             section = 0;
             break;
           }
-          else if ( strncmp(buffer, "Propellant", 10) == 0 )
+          else if (strncmp(buffer, "Propellant", 10) == 0)
           {
             section = 1;
           }
+//          else if (strncmp(buffer, "thermo_file", 10) == 0)
+//          {
+//            printf("New path...\n");
+//            sscanf(buffer, "%s %s", variable, thermo_file);
+//          }
+//          else if (strncmp(buffer, "propellant.dat", 10) == 0)
+//          {
+//            printf("hehe\n");
+//            sscanf(buffer, "%s %s", variable, propellant_file); 
+//          }
           else
           { 
             if (strncmp(buffer, "TP", 2) == 0)
@@ -344,6 +386,8 @@ int main(int argc, char *argv[])
   char filename[FILENAME_MAX];
   FILE *fd = NULL;
 
+  FILE *conf = NULL;
+  
   equilibrium_t *equil, *frozen, *shifting; 
   
   int thermo_loaded     = 0;
@@ -353,7 +397,9 @@ int main(int argc, char *argv[])
 
   clock_t timer;
 
-//  int param;
+  char variable[64];
+  char path[FILENAME_MAX];
+  char buffer[512];
 
   case_t case_list[MAX_CASE];
   for (i = 0; i < MAX_CASE; i++)
@@ -367,7 +413,7 @@ int main(int argc, char *argv[])
   errorfile = stderr;
   outputfile = stdout;
   
-/*  global_verbose = 1; */
+  /* global_verbose = 1; */
 
   if (argc == 1)
   {
@@ -375,6 +421,22 @@ int main(int argc, char *argv[])
     exit (ERROR);
   }
 
+  /* read the configuration file if there is one*/
+  if ((conf = fopen(CONF_FILE, "r")) != NULL)
+  {
+    while (fgets(buffer, 512, conf))
+    { 
+      sscanf(buffer, "%s %s", variable, path);
+      if (strcmp(variable, "thermo") == 0)
+      {
+        strncpy(thermo_file, path, FILENAME_MAX);
+      }
+      else if (strcmp(variable, "propellant") == 0)
+      {
+        strncpy(propellant_file, path, FILENAME_MAX);
+      }
+    }
+  }
   
   while (1)
   {
@@ -417,7 +479,11 @@ int main(int argc, char *argv[])
       case 'p':
           if (!propellant_loaded)
           {
-            load_propellant (PROPELLANT_FILE);
+            if (load_propellant (propellant_file) < 0)
+            {
+              printf("Error loading propellant file: %s\n", propellant_file);
+              return -1;
+            }
             propellant_loaded = 1;
           }
           print_propellant_list();
@@ -428,7 +494,11 @@ int main(int argc, char *argv[])
       case 'q':
           if (!propellant_loaded)
           {
-            load_propellant (PROPELLANT_FILE);
+            if (load_propellant (propellant_file) < 0)
+            {
+              printf("Error loading propellant file: %s\n", propellant_file);
+              return -1;
+            }
             propellant_loaded = 1;
           }
           print_propellant_info( atoi(optarg) );
@@ -458,7 +528,12 @@ int main(int argc, char *argv[])
       case 't':
           if (!thermo_loaded)
           {
-            load_thermo (THERMO_FILE);
+            if (load_thermo (thermo_file) < 0)
+            {
+              printf("Error loading thermo data file: %s\n", thermo_file);
+              return -1;
+            }
+            
             thermo_loaded = 1;
           }
           print_thermo_list();
@@ -468,7 +543,12 @@ int main(int argc, char *argv[])
       case 'u':
           if (!thermo_loaded)
           {
-            load_thermo (THERMO_FILE);
+            if (load_thermo (thermo_file) < 0)
+            {
+              printf("Error loading thermo data file: %s\n", thermo_file);
+              return -1;
+            }
+            
             thermo_loaded = 1;
           }
           print_thermo_info( atoi(optarg) );
@@ -484,56 +564,57 @@ int main(int argc, char *argv[])
             v = 0;
           }
           break;
-          
-      case '?':
-          info(argv);
-          return (SUCCESS);
 
           /* print information */
       case 'i':
           welcome_message();
           return (SUCCESS);
+          
+      case '?':
+          info(argv);
+          return (SUCCESS);
+      
     }
   }  
-  
+      
   if (!thermo_loaded)
   {
-    load_thermo (THERMO_FILE);
+    if (load_thermo (thermo_file) < 0)
+    {
+      printf("Error loading thermo data file: %s\n", thermo_file);
+      return -1;
+    }
+    
     thermo_loaded = 1;
   }
   if (!propellant_loaded)
   {
-    load_propellant (PROPELLANT_FILE);
+    if (load_propellant (propellant_file) < 0)
+    {
+      printf("Error loading propellant file: %s\n", propellant_file);
+      return -1;
+    }
+    
     propellant_loaded = 1;
   }
   
-  //welcome_message();
-
-  /* test code to search by formula name
-  if ( (temp = propellant_search_by_formula("C")) != -1)
-    printf("%s\n", (propellant_list + temp)->name);
-  else
-    printf("Not found in the database\n");
-  */
   
   if (fd != NULL)
   {
     equil = (equilibrium_t *) malloc (sizeof (equilibrium_t));
     initialize_equilibrium(equil);
-
-
+  
     frozen   = (equilibrium_t *) malloc (sizeof(equilibrium_t)*3);
     shifting = (equilibrium_t *) malloc (sizeof(equilibrium_t)*3);
-
+    
     for (i = 0; i < 3; i++)
     {
       initialize_equilibrium(frozen + i);
       initialize_equilibrium(shifting + i);
     }
     
-    
     load_input(fd, equil, case_list, &exit_pressure);
-
+    
     compute_density(&(equil->propellant));
     
     fclose(fd);
@@ -550,10 +631,7 @@ int main(int argc, char *argv[])
 
       /* be sure to begin iteration without considering
          condensed species. Once n_condensed have been set */
-      //if (equil->product.n_condensed)
-      //{
-        equil->product.n[CONDENSED] = 0;
-        //}
+      equil->product.n[CONDENSED] = 0;
         
       switch (case_list[i].p)
       {
@@ -655,8 +733,8 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(shifting, HP)) break,
                  CHAMBER_MSG);
 
-            TIME(equilibrium_performance(shifting, case_list[i].exit_cond_type,
-                                         case_list[i].exit_condition),
+            TIME(shifting_performance(shifting, case_list[i].exit_cond_type,
+                                      case_list[i].exit_condition),
                  EQUILIBRIUM_MSG);
 
             print_product_properties(shifting, 3);

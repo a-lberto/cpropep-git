@@ -29,17 +29,11 @@
 
 #include "equilibrium.h"
 #include "performance.h"
-//#include "derivative.h"
 #include "thermo.h"
 
 #include "load.h"
 #include "print.h"
 
-//extern propellant_t  *propellant_list;
-//extern thermo_t	     *thermo_list;
-
-//extern FILE * errorfile;
-//extern FILE * outputfile;
 
 s_cgi *cgi;
 
@@ -276,7 +270,7 @@ int main (int argc, char **argv, char **env)
           print_propellant_composition(shifting);
 
           equilibrium(shifting, HP);
-          equilibrium_performance(shifting, exit_cond_type, exit_cond);
+          shifting_performance(shifting, exit_cond_type, exit_cond);
 
           print_product_properties(shifting, 3);
           print_performance_information(shifting, 3);

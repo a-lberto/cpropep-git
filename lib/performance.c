@@ -1,6 +1,6 @@
 /* performance.c  -  Compute performance caracteristic of a motor
                      considering equilibrium                      */
-/* $Id: performance.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
+/* $Id: performance.c,v 1.2 2000/07/19 02:13:03 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese  <pinese@cyberwizards.com.au>                        */
@@ -332,8 +332,8 @@ int frozen_performance(equilibrium_t *e, exit_condition_t exit_type,
 }
 
 
-int equilibrium_performance(equilibrium_t *e, exit_condition_t exit_type,
-                            double value)
+int shifting_performance(equilibrium_t *e, exit_condition_t exit_type,
+                         double value)
 {
   short i;
   double sound_velocity = 0.0;
