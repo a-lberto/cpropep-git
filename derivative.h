@@ -18,9 +18,12 @@ typedef struct deriv
 
 int derivative(equilibrium_t *e, deriv_t *d);
 
+#ifdef TRUE_ARRAY
+int fill_temperature_derivative_matrix(double *matrix, equilibrium_t *e);
+int fill_pressure_derivative_matrix(double *matrix, equilibrium_t *e);
+#else
 int fill_temperature_derivative_matrix(double **matrix, equilibrium_t *e);
-
 int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e);
-
+#endif
 
 #endif

@@ -1,6 +1,6 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.5 2000/05/24 02:14:34 antoine Exp $ */
+/* $Id: derivative.c,v 1.6 2000/06/07 04:34:52 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -73,17 +73,26 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
 int derivative(equilibrium_t *e, deriv_t *d)
 {
   int i;
-  int       size;
+  int size;
+#ifdef TRUE_ARRAY
+  double *matrix;
+#else
   double ** matrix;   
+#endif
   double  * sol;
 
   /* the size of the coefficient matrix */
   size = e->n_element + e->p.n[CONDENSED] + 1;
-  
+
+#ifdef TRUE_ARRAY
+  matrix = (double *) malloc (size * (size + 1) * sizeof(double));
+#else
   /* allocate the memory for the matrix */
   matrix = (double **) malloc (sizeof(double *) * size);
   for (i = 0; i < size; i++)
     matrix[i] = (double *) malloc (sizeof(double) * (size+1));
+#endif
+  
   
   /* allocate the memory for the solution vector */
   sol = (double *) calloc (size, sizeof(double));
@@ -139,6 +148,11 @@ int derivative(equilibrium_t *e, deriv_t *d)
     fprintf(outputfile, "Isentropic exponent  = % f\n", d->isex);
     fprintf(outputfile, "RT/V                 = % f\n", e->P/e->n);
   }
+#ifndef TRUE_ARRAY
+  for (i = 0; i < size; i++)
+    free(matrix[i]);
+#endif
+  
   free(matrix);
   free(sol);
   return 0;
@@ -147,19 +161,31 @@ int derivative(equilibrium_t *e, deriv_t *d)
 
 /* Fill the matrix with the coefficient for evaluating derivatives with
    respect to logarithm of temperature at constant pressure */
+#ifdef TRUE_ARRAY
+int fill_temperature_derivative_matrix(double *matrix, equilibrium_t *e)
+#else
 int fill_temperature_derivative_matrix(double **matrix, equilibrium_t *e)
+#endif
 {
   
-  int j, k;
+  int j, k, size;
   double tmp;
 
+  /* the size of the coefficient matrix */
+  size = e->n_element + e->p.n[CONDENSED] + 1;
+  
   /* fill the common part */
-  fill_matrix(matrix, e);
+  fill_matrix(matrix, e, TP);
   
   /* del ln(n)/ del ln(T) */
+#ifdef TRUE_ARRAY
+  *(matrix + e->n_element + e->p.n[CONDENSED] + size *
+    (e->n_element + e->p.n[CONDENSED])) = 0.0;
+#else
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
-
+#endif
+  
   /* right side */
   for (j = 0; j < e->n_element; j++)
   {
@@ -167,39 +193,66 @@ int fill_temperature_derivative_matrix(double **matrix, equilibrium_t *e)
     for (k = 0; k < e->p.n[GAS]; k++)
       tmp -= product_element_coef( e->element[j], e->p.species[k][GAS]) * 
         e->p.coef[k][GAS] * enthalpy_0(e->p.species[k][GAS], e->T);
-    
+#ifdef TRUE_ARRAY
+    *(matrix + j + size * (e->n_element + e->p.n[CONDENSED] + 1)) = tmp;
+#else
     matrix[j][ e->n_element + e->p.n[CONDENSED] + 1] = tmp;
-
+#endif
   }
 
   for (j = 0; j < e->p.n[CONDENSED]; j++) /* row */
+#ifdef TRUE_ARRAY
+    *(matrix + j + e->n_element + size *
+      (e->n_element + e->p.n[CONDENSED] + 1)) =
+      -enthalpy_0( e->p.species[j][CONDENSED], e->T);
+#else
     matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 
       -enthalpy_0( e->p.species[j][CONDENSED], e->T);
+#endif
   
   tmp = 0.0;
   for (k = 0; k < e->p.n[GAS]; k++)
     tmp -= e->p.coef[k][GAS]*enthalpy_0( e->p.species[k][GAS], e->T ); 
 
+#ifdef TRUE_ARRAY
+  *(matrix + e->n_element + e->p.n[CONDENSED] + size *
+    (e->n_element + e->p.n[CONDENSED]+ 1)) = tmp;
+#else
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element
                                            + e->p.n[CONDENSED]+ 1] = tmp;
+#endif
+  
   
   return 0;
 }
 
 /* Fill the matrix with the coefficient for evaluating derivatives with
    respect to logarithm of pressure at constant temperature */
+#ifdef TRUE_ARRAY
+int fill_pressure_derivative_matrix(double *matrix, equilibrium_t *e)
+#else
 int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
+#endif
 {
   
-  int j, k;
+  int j, k, size;
   double tmp;
 
+  /* the size of the coefficient matrix */
+  size = e->n_element + e->p.n[CONDENSED] + 1;
+  
   /* fill the common part */
-  fill_matrix(matrix, e);
+  fill_matrix(matrix, e, TP);
   
   /* del ln(n)/ del ln(T) */
+#ifdef TRUE_ARRAY
+  *(matrix + e->n_element + e->p.n[CONDENSED] + size *
+    (e->n_element + e->p.n[CONDENSED])) = 0.0;
+#else
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element + e->p.n[CONDENSED]]
     =  0.0;
+#endif
+  
   
   /* right side */
   for (j = 0; j < e->n_element; j++)
@@ -208,22 +261,33 @@ int fill_pressure_derivative_matrix(double **matrix, equilibrium_t *e)
     for (k = 0; k < e->p.n[GAS]; k++)
       tmp += product_element_coef( e->element[j], e->p.species[k][GAS]) * 
         e->p.coef[k][GAS];
-    
+#ifdef TRUE_ARRAY
+    *(matrix + j + size * (e->n_element + e->p.n[CONDENSED] + 1)) = tmp;
+#else
     matrix[j][ e->n_element + e->p.n[CONDENSED] + 1] = tmp;
-    
+#endif
   }
 
   
   for (j = 0; j < e->p.n[CONDENSED]; j++) /* row */
+#ifdef TRUE_ARRAY
+    *(matrix + j + e->n_element + size *
+      (e->n_element + e->p.n[CONDENSED] + 1)) = 0.0;
+#else
     matrix[ j + e->n_element ][ e->n_element + e->p.n[CONDENSED] + 1] = 0;
-  
+#endif
   
   tmp = 0.0;
   for (k = 0; k < e->p.n[GAS]; k++)
     tmp += e->p.coef[k][GAS]; 
-  
+
+#ifdef TRUE_ARRAY
+  *(matrix + e->n_element + e->p.n[CONDENSED] + size *
+    (e->n_element + e->p.n[CONDENSED]+ 1)) = tmp;
+#else
   matrix[e->n_element + e->p.n[CONDENSED]][e->n_element
                                           + e->p.n[CONDENSED]+ 1] = tmp;
+#endif
   
   return 0;
 }

@@ -2,7 +2,7 @@
 #define equilibrium_h
 
 /* equilibrium.h  -  Calculation of Complex Chemical Equilibrium       */
-/* $Id: equilibrium.h,v 1.12 2000/05/24 02:14:34 antoine Exp $ */
+/* $Id: equilibrium.h,v 1.13 2000/06/07 04:34:52 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                      */
@@ -28,6 +28,9 @@ unsigned long num_propellant, num_thermo;
 
 #define _min(a, b, c) __min( __min(a, b), c)
 #define _max(a, b, c) __max( __max(a, b), c)
+
+#define MIN(a, b, c, d) __min( __min(a, b), __min(c, d))
+#define MAX(a, b, c, d) __max( __max(a, b), __max(c, d))
 
 extern int global_verbose;
 extern const float R;
@@ -72,7 +75,7 @@ typedef struct _thermo
   int     ncoef[4];     /* number of coefficient for Cp0/R   */
   int     ex[4][8];     /* exponent in empirical equation */
   
-  long double param[4][9];
+  double param[4][9];
   
   /* for species with data at only one temperature */
   /* especially condensed                          */
@@ -91,7 +94,7 @@ typedef struct _propellant
   int   elem[6];   /* element in the molecule (atomic number) max 6 */
   int   coef[6];   /* stochiometric coefficient of this element 
 		                  (0 for none) */
-  int   heat;      /* heat of formation in Joule/gram */
+  float heat;      /* heat of formation in Joule/gram */
   float density;   /* density in g/cubic cm */
   
 } propellant_t;
@@ -173,6 +176,7 @@ typedef struct _equilibrium
   double         n;           /* total number of mole */
   double         delta_ln_n;
   double        *delta_ln_nj; /* hold delta ln(nj) for each gazeous species */
+  double        *ln_nj;       /* hold ln(nj) for each gazeous species */
 } equilibrium_t;
 
 
@@ -281,7 +285,7 @@ AUTHOR: Antoine Lefebvre
 **************************************************************/
 double entropy_0(int sp, float T);
 
-double entropy(int sp, state_t st, double nj, double n, float T, float P);
+double entropy(int sp, state_t st, double ln_nj_n, float T, float P);
 
 /*************************************************************
 FUNCTION: Return the specific heat (Cp) of the molecule in 
@@ -360,7 +364,8 @@ COMMENTS: g = uo + ln(nj/n) + ln(P) for gazes
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-double gibbs(int sp, state_t st, double nj, double n, float T, float P);
+//double gibbs(int sp, state_t st, double nj, double n, float T, float P);
+double gibbs(int sp, state_t st, double nj_n_n, float T, float P);
 
 
 /***************************************************************
@@ -408,6 +413,8 @@ FUNCTION: Dealloc what have been allocated by
           initialize_equilibrium
 ***************************************************************/
 int dealloc_equilibrium(equilibrium_t *e);
+
+int reset_equilibrium(equilibrium_t *e);
 
 int copy_equilibrium(equilibrium_t *dest, equilibrium_t *src);
 
@@ -469,9 +476,14 @@ COMMENTS: It use the theory explain in
 
 AUTHOR:   Antoine Lefebvre
 ****************************************************************/
-int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P);
 
-int fill_matrix(double **matrix, equilibrium_t *e);
+#ifdef TRUE_ARRAY
+int fill_equilibrium_matrix(double *matrix, equilibrium_t *e, problem_t P);
+int fill_matrix(double *matrix, equilibrium_t *e, problem_t P);
+#else
+int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P);
+int fill_matrix(double **matrix, equilibrium_t *e, problem_t P);
+#endif
 
 /****************************************************************
 FUNCTION: This function compute the equilibrium composition at

@@ -34,6 +34,9 @@
 extern propellant_t  *propellant_list;
 extern thermo_t	     *thermo_list;
 
+extern FILE * errorfile;
+extern FILE * outputfile;
+
 s_cgi *cgi;
 
 #ifdef SOURCEFORGE
@@ -46,12 +49,8 @@ s_cgi *cgi;
 
 void init_equil(void)
 {
-    /* allocate memory to hold data */
-//  if (mem_alloc())
-//    return ;
   load_thermo (THERMO_PATH);
-  load_propellant (PROPELLANT_PATH);
-  
+  load_propellant (PROPELLANT_PATH); 
 }
 
 void destroy(void)
@@ -134,13 +133,20 @@ int eval_cgi(equilibrium_t *e)
 int main (int argc, char **argv, char **env)
 {
   char *path_info = NULL;  
-  equilibrium_t *equil;
+  equilibrium_t *equil, *exit_equil;
+  performance_t performance;
+  
   char buffer[32];
 
   double value;
   int val;
   problem_t P = TP;
+
+  errorfile = stderr;
+  outputfile = stdout;
   
+  performance.frozen_ok = false;
+  performance.equilibrium_ok = false;
   
   cgiDebug(0, 0);
   cgi = cgiInit();
@@ -191,37 +197,71 @@ int main (int argc, char **argv, char **env)
       
 	    equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
 	    initialize_equilibrium(equil);
+      exit_equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
+	    initialize_equilibrium(exit_equil);
+      
       
 	    if (eval_cgi(equil))
         printf("<b>Error</b>");
 	    else
 	    {
         printf("<pre>");
-        set_verbose(equil, 1);
+        set_verbose(equil, 0);
+        set_verbose(exit_equil, 0);
 
         if (strncmp("Find", cgiGetValue(cgi, "type"), 4) == 0)
         {
+          print_propellant_composition(equil);
           P = HP;
           equilibrium(equil, P);
-          print_product_composition(equil);
           print_product_properties(equil);
+          print_product_composition(equil);
+          
         }
         else if (strncmp("Froz", cgiGetValue(cgi, "type"), 4) == 0)
         {
-          frozen_performance(equil, 1);
+          print_propellant_composition(equil);
+          equilibrium(equil, HP);
+
+          printf("--- Chamber equilibrium properties ---\n");
+          print_product_properties(equil);
+          print_product_composition(equil);
+            
+          frozen_performance(equil, &performance, 1);
+          print_performance_information(&performance);
+        }
+        else if (strncmp("Shifting", cgiGetValue(cgi, "type"), 8) == 0)
+        {
+          print_propellant_composition(equil);
+          equilibrium(equil, HP);
+
+          printf("--- Chamber equilibrium properties ---\n");
+          print_product_properties(equil);
+          print_product_composition(equil);
+          
+          equilibrium_performance(equil, exit_equil, &performance, 1);
+          print_performance_information(&performance);
+
+           printf("--- Exit equilibrium properties ---\n");
+           print_product_properties(exit_equil);
+           print_product_composition(exit_equil);
         }
         else
         {
+          print_propellant_composition(equil);
           equilibrium(equil, P);
-          print_product_composition(equil);
           print_product_properties(equil);
+          print_product_composition(equil);
+          
         }
           
         printf("</pre>");
 	    }
       
-	    dealloc_equillibrium (equil);
+	    dealloc_equilibrium (equil);
+      dealloc_equilibrium (exit_equil);
       free (equil);
+      free (exit_equil);
       
     }
     else if (!strcmp(path_info, "/prop"))

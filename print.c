@@ -4,6 +4,7 @@
 #include "print.h"
 #include "performance.h"
 #include "equilibrium.h"
+#include "conversion.h"
 
 
 extern propellant_t	*propellant_list;
@@ -19,7 +20,7 @@ extern FILE * outputfile;
 /* the minimum concentration we are interest to see */
 #define CONC_MIN 1.0e-4 
 
-#define ATM_TO_PSI 14.695949
+
 
 int print_propellant_info(int sp)
 {
@@ -29,9 +30,9 @@ int print_propellant_info(int sp)
     return -1;
   
   fprintf(outputfile, "Code %-35s Enthalpy  Density  Composition\n", "Name");
-  fprintf(outputfile, "%d  %-35s % .2f % .2f", sp,
+  fprintf(outputfile, "%d  %-35s % .4f % .2f", sp,
           (propellant_list + sp)->name,
-          (float)(propellant_list + sp)->heat,
+          (propellant_list + sp)->heat,
           (propellant_list + sp)->density);
   
   fprintf(outputfile, "  ");
@@ -84,6 +85,7 @@ int print_thermo_info(int sp)
   fprintf(outputfile, "\n");
   fprintf(outputfile, "Molecular weight: \t\t% f g/mol\n", s->weight);
   fprintf(outputfile, "Heat of formation at 298.15 K : % f J/mol\n", s->heat);
+  fprintf(outputfile, "Assign enthalpy               : % f J/mol\n", s->enth);
   fprintf(outputfile, "HO(298.15) - HO(0): \t\t% f J/mol\n", s->dho);
   fprintf(outputfile, "Number of temperature range: % d\n\n", s->nint);
   
@@ -92,7 +94,7 @@ int print_thermo_info(int sp)
     fprintf(outputfile, "Interval: %f - %f \n", s->range[i][0],
             s->range[i][1]);
     for (j = 0; j < 9; j++)
-      fprintf(outputfile, "% Le ", s->param[i][j]);
+      fprintf(outputfile, "% .9e ", s->param[i][j]);
     fprintf(outputfile, "\n\n");
   }
   fprintf(outputfile, "---------------------------------------------\n");
@@ -114,7 +116,7 @@ int print_propellant_list(void)
 {
   int i;
   for (i = 0; i < num_propellant; i++)
-    fprintf(outputfile, "%-4d %-30s %5d\n", i, (propellant_list + i)->name,
+    fprintf(outputfile, "%-4d %-30s %5f\n", i, (propellant_list + i)->name,
             (propellant_list +i)->heat);
  
   return 0;
@@ -223,10 +225,10 @@ int print_propellant_composition(equilibrium_t *e)
     fprintf(outputfile, "\n");
   }
 
-  fprintf(outputfile, "Total mass: % .2f g\n", propellant_mass(e));
+  fprintf(outputfile, "Total mass: % f g\n", propellant_mass(e));
   
   fprintf(outputfile, "Enthalpy  : % .2f Joules\n",
-          propellant_enthalpy(e)*R*e->T);
+          propellant_enthalpy(e)*propellant_mass(e));
   
   fprintf(outputfile, "\n");
   return 0;
@@ -282,7 +284,7 @@ int print_performance_information(performance_t *p)
   }
   else
   {
-    fprintf(outputfile, "Frozen performance was not computed\n");
+    //fprintf(outputfile, "Frozen performance was not computed\n");
   }
 
   if (p->equilibrium_ok)
@@ -336,7 +338,7 @@ int print_performance_information(performance_t *p)
   }
   else
   {
-    fprintf(outputfile, "Equilibrium performance was not computed\n\n");
+    //fprintf(outputfile, "Equilibrium performance was not computed\n\n");
   }
 
   return 0;

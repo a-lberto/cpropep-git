@@ -2,10 +2,12 @@
 #ifndef performance_h
 #define performance_h
 
+#include "compat.h"
+#include "return.h"
 #include "equilibrium.h"
 #include "derivative.h"
 
-#include "compat.h"
+
 
 typedef struct _frozen_state_t
 {
@@ -71,3 +73,4 @@ int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
 double mixture_specific_heat_0(equilibrium_t *e, double temp);
 
 #endif
+

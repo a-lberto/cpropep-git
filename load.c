@@ -5,10 +5,9 @@
 #include "equilibrium.h"
 #include "load.h"
 
+#include "conversion.h"
 #include "return.h"
 
-#define CAL_TO_JOULE 4.1868
-#define CLBS_TO_CCM  27.679905
 
 extern propellant_t	*propellant_list;
 extern thermo_t	    *thermo_list;
@@ -150,16 +149,6 @@ int load_thermo(char *filename)
 				/* Atoms still to be processed */
 		    
 				/* find the atomic number of the element */
-/*
-        for (l = 0; l < N_SYMB; l++)
-				{
-					if (!strcmp(tmp, symb[l]))
-					{
-						(thermo_list + i)->elem[k] = l;
-						break;
-					}
-				}
-*/
         (thermo_list + i)->elem[k] = atomic_number(tmp);
 		    
 				/* And the number of atoms */
@@ -189,8 +178,8 @@ int load_thermo(char *filename)
       
 		/* grep the heat of formation (J/mol) or enthalpy if condensed */
 		/* The values are assigned in the if block following */
-		strncpy(tmp_ptr, buf_ptr + 65, 13);
-		tmp[13] = '\0';
+		strncpy(tmp_ptr, buf_ptr + 65, 15);
+		tmp[15] = '\0';
       
 		/* now get the data */
 		/* there is '(thermo_list + i)->nint' set of data */
@@ -290,7 +279,8 @@ int load_thermo(char *filename)
 					tmp[16] = '\0';
 	    
 					(thermo_list + i)->param[j][l] = atof(tmp_ptr);
-				}
+          //(thermo_list + i)->param[j][l] = strtod(tmp_ptr, NULL);
+        }
 	  
 				/* Get the third line of three */
 				/* Read in the line and check for EOF */
@@ -499,11 +489,11 @@ int load_propellant(char *filename)
       
 		strncpy(tmp_ptr, buf_ptr + 69, 5);
 		tmp[5] = '\0';		    
-		propellant_list[i].heat = atoi(tmp) * CAL_TO_JOULE;
+		propellant_list[i].heat = atof(tmp) * CAL_TO_JOULE;
       
 		strncpy(tmp_ptr, buf_ptr + 75, 5);
 		tmp[5] = '\0';
-		propellant_list[i].density = atof(tmp) * CLBS_TO_CCM;
+		propellant_list[i].density = atof(tmp) *  LBS_IN3_TO_G_CM3;
       
 	} 
   

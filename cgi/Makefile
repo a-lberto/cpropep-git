@@ -4,6 +4,8 @@ LIB  =  -lcpropep -lm -lnum -lcgi #-lcruft -lf2c
 LIBDIR = -L../../libnum/ -L../ -L./
 INCLUDEDIR = -I../../libnum/ -I../ -I./
 
+DEF = -DGCC
+
 PROG = cgitest
 
 OBJS = cgitest.o
@@ -14,7 +16,7 @@ OBJS = cgitest.o
 all: $(PROG)
 
 .c.o:
-	$(CC) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
+	$(CC) $(DEF) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
 
 
 $(PROG): $(OBJS)
