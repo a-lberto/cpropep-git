@@ -12,6 +12,8 @@ extern thermo_t	    *thermo_list;
 
 extern char symb[N_SYMB][3];
 
+/* the minimum concentration we are interest to see */
+#define CONC_MIN 1e-4 
 
 int print_propellant_info(int sp)
 {
@@ -135,14 +137,13 @@ int print_product_composition(equilibrium_t *e)
   int i;
   
   printf("%.4e mol of gaz\n", e->n);
-  printf("molar fraction \t mol \t\t free energy\n");
+  printf("molar fraction \t mol \n");
   for (i = 0; i < e->p->n[GAS]; i++)
   {
-    if (!(e->p->coef[GAS][i] == 0.0))
-      printf("% .4e \t% .4e \t %f \t %s\n", 
+    if (e->p->coef[GAS][i]/e->n > CONC_MIN)
+      printf("% .4e \t% .4e \t %s\n", 
              e->p->coef[GAS][i]/e->n,
              e->p->coef[GAS][i],
-             gibbs_0(e->p->species[GAS][i], e->T),
              (thermo_list + e->p->species[GAS][i])->name);
   }
   if (e->p->n[CONDENSED] > 0)
@@ -152,10 +153,17 @@ int print_product_composition(equilibrium_t *e)
     printf("%s  % .4e\n", (thermo_list + e->p->species[CONDENSED][i])->name,
            e->p->coef[CONDENSED][i]);
   }
-  printf("Molar mass of product: % f g/mol\n", product_molar_mass(e));
-  printf("Products enthalpy:     % f\n", product_enthalpy(e)*R*e->T);
-  printf("Products entropy:      % f\n", product_entropy(e)*R);
-         
+  printf("\n");
+  return 0;
+}
+
+int print_product_properties(equilibrium_t *e)
+{
+  printf("Molar mass of product: % .2f g/mol\n", product_molar_mass(e));
+  printf("Products enthalpy    : % .2f J\n",     product_enthalpy(e)*R*e->T);
+  printf("Products entropy     : % .2f J/K\n",   product_entropy(e)*R);
+  printf("Temperature          : % .2f K\n",     e->T);
+  printf("Pressure             : % .2f atm\n",   e->P);
   return 0;
 }
 
@@ -184,20 +192,25 @@ int print_propellant_composition(equilibrium_t *e)
     printf("\n");
   }
 
-  printf("Total mass: %f\n", propellant_mass(e));
+  printf("Total mass: % .2f g\n", propellant_mass(e));
   
   printf("\n");
   printf("Propellant properties\n");
-
-
   enth = propellant_enthalpy (e);
-
-  /* not sure of the t, 273.15 or e->T */
-  printf("Enthalpy: %.2f Joules  %.2f Joules/(RT)\n", enth*R*e->T, enth);
+  printf("Enthalpy: %.2f Joules\n", enth*R*e->T);
   
   printf("\n");
   return 0;
   
+}
+
+int print_derivative_results(deriv_t d)
+{
+  printf("Cp                   : % .2f \n", d.cp);
+  printf("Cv                   : % .2f \n", d.cv);
+  printf("Cp/Cv                : % .2f \n", d.cp_cv);
+  printf("Isentropic exponent  : % .2f \n", d.isex);
+  return 0;
 }
 
 

@@ -2,6 +2,7 @@
 #define print_h
 
 #include "equilibrium.h"
+#include "derivative.h"
 
 /***************************************************************
 FUNCTION: Print the information of a specie in the thermo_list
@@ -45,7 +46,12 @@ AUTHOR: Antoine Lefebvre
 int print_gazeous(product_t p);
 
 int print_product_composition(equilibrium_t *e);
+int print_product_properties(equilibrium_t *e);
 
 int print_propellant_composition(equilibrium_t *e);
+
+
+
+int print_derivative_results(deriv_t d);
 
 #endif

@@ -36,7 +36,7 @@
 
 
 #define version "1.0"
-#define date "27/02/2000"
+#define date    "17/04/2000"
 
 
 /* global variable containing the information about chemical species */
@@ -47,6 +47,14 @@ extern double conc_tol;
 extern double conv_tol;
 extern int    iteration_max;
 
+typedef enum _p
+{
+  SIMPLE_EQUILIBRIUM,
+  FIND_FLAME_TEMPERATURE,
+  FROZEN_PERFORMANCE,
+  EQUILIBRIUM_PERFORMANCE,
+  ALL_PERFORMANCE
+} p_type;
 
 void welcome_message(void)
 {
@@ -75,7 +83,7 @@ void usage(void)
 }
 
 
-int load_input(FILE *fd, equilibrium_t *e, problem_t *p)
+int load_input(FILE *fd, equilibrium_t *e, p_type *p, double *pe)
 { 
   double tmp1, tmp2;
 
@@ -107,17 +115,23 @@ int load_input(FILE *fd, equilibrium_t *e, problem_t *p)
             section = 1;
           else
           {
-            if ( strncmp(buffer, "TP", 2) == 0)
-              *p = TP;
+            if (strncmp(buffer, "TP", 2) == 0)
+              *p = SIMPLE_EQUILIBRIUM;
             else if (strncmp(buffer, "HP", 2) == 0)
-              *p = HP;
+              *p = FIND_FLAME_TEMPERATURE;
+            else if (strncmp(buffer, "FR", 2) == 0)
+              *p = FROZEN_PERFORMANCE;
+            else if (strncmp(buffer, "EQ", 2) == 0)
+              *p = EQUILIBRIUM_PERFORMANCE;
+            else if (strncmp(buffer, "PE", 2) == 0)
+              *p = ALL_PERFORMANCE;
             else
             {
               printf ("Unknown option.\n");
               break;
             }
             
-            sscanf(buffer, "%s %lf %lf", tmp, &tmp1, &tmp2);
+            sscanf(buffer, "%s %lf %lf %lf", tmp, &tmp1, &tmp2, pe);
             set_state(e, tmp1, tmp2);
           }
           
@@ -177,7 +191,9 @@ int main(int argc, char *argv[])
   int thermo_loaded     = 0;
   int propellant_loaded = 0;
 
-  problem_t p;
+  double exit_pressure;
+  
+  p_type p;
   
   /* allocate memory to hold data */
   if (mem_alloc())
@@ -211,14 +227,16 @@ int main(int argc, char *argv[])
           return 0;
           
       case 'f':
-          if (strlen(optarg) > 128)
+          if (strlen(optarg) > FILENAME_MAX)
           {
             printf("Filename too long!\n");
             break;
           }
-          strncpy(filename, optarg, 128);
-          if ((fd = fopen(filename, "r")) == NULL )
+          strncpy (filename, optarg, FILENAME_MAX);
+
+          if ( (fd = fopen (filename, "r")) == NULL )
             return 1;
+          
           break;
           
       case 't':
@@ -245,7 +263,6 @@ int main(int argc, char *argv[])
     }
   }  
   
-
   if (!thermo_loaded)
   {
     load_thermo ("thermo.dat");
@@ -263,16 +280,40 @@ int main(int argc, char *argv[])
   {
     equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
     initialize_equilibrium(equil);
-    load_input(fd, equil, &p);
+    load_input(fd, equil, &p, &exit_pressure);
     fclose(fd);
     set_verbose(equil, v);
 
-    frozen_performance(equil, 1);
-    //equilibrium(equil, p);
-
+    switch (p)
+    {
+      case SIMPLE_EQUILIBRIUM:
+          print_propellant_composition(equil);
+          if (equilibrium(equil, TP))
+            break;
+          print_product_composition(equil);
+          print_product_properties(equil);
+          break;
+      case FIND_FLAME_TEMPERATURE:
+          print_propellant_composition(equil);
+          if (equilibrium(equil, HP))
+            break;
+          print_product_composition(equil);
+          print_product_properties(equil);
+          break;
+      case FROZEN_PERFORMANCE:
+          frozen_performance(equil, exit_pressure);
+          break;
+      case EQUILIBRIUM_PERFORMANCE:
+          equilibrium_performance(equil, exit_pressure);
+          break;
+      case ALL_PERFORMANCE:
+          frozen_performance(equil, exit_pressure);
+          equilibrium_performance(equil, exit_pressure);
+          break;
+    }
     dealloc_equillibrium (equil);
   }
- 
+  
   free (propellant_list);
   free (thermo_list);
 

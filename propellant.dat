@@ -843,7 +843,7 @@ H    842 PYROMELLITIC DIANHYDRIDE       10C   2H   6O   0    0    0  -1148 .0000
      843 R-18                          624C 999H 374O   0    0    0  -1364 .0326]
      844 R45                           661C 999H   1N   9O   0    0     40 .0325]
 G    845 R45 HTPB (UTC)                981H 654C   6O   0    0    0      5 .0336]
-     846 R45M                          667C 999H   5O   0    0    0    -30 .0433]
+     846 R45M                          667C 999H   5O   0    0    0    -30 .0343]
 FJ   847 RDX(HEXAHYDROTRINITROTRIAZINE)  3C   6H   6N   6O   0    0     66 .0656]
 C    848 RED FUMING NITRIC ACID (14NO2)151H 165N 471O   0    0    0   -654 .0567]
  C   849 RED FUMING NITRIC ACID (20NO2) 85H 114N 314O   0    0    0   -544 .0567]

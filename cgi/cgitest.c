@@ -26,18 +26,23 @@
 #include <stdlib.h>
 #include <cgi.h>
 
+#include "performance.h"
 #include "equilibrium.h"
 #include "load.h"
+#include "print.h"
 
 extern propellant_t  *propellant_list;
 extern thermo_t	     *thermo_list;
 
 s_cgi *cgi;
 
-#define URL "http://www.infodrom.north.de/cgilib/"
-
+#ifdef SOURCEFORGE
+#define THERMO_PATH "thermo.dat"
+#define PROPELLANT_PATH "propellant.dat"
+#else
 #define THERMO_PATH "/home/antoine/projets/rocket/rocketworkbench/cpropep/thermo.dat"
 #define PROPELLANT_PATH "/home/antoine/projets/rocket/rocketworkbench/cpropep/propellant.dat"
+#endif
 
 void init_equil(void)
 {
@@ -195,9 +200,23 @@ int main (int argc, char **argv, char **env)
         set_verbose(equil, 1);
 
         if (strncmp("Find", cgiGetValue(cgi, "type"), 4) == 0)
+        {
           P = HP;
- 
-        equilibrium(equil, P);
+          equilibrium(equil, P);
+          print_product_composition(equil);
+          print_product_properties(equil);
+        }
+        else if (strncmp("Froz", cgiGetValue(cgi, "type"), 4) == 0)
+        {
+          frozen_performance(equil, 1);
+        }
+        else
+        {
+          equilibrium(equil, P);
+          print_product_composition(equil);
+          print_product_properties(equil);
+        }
+          
         printf("</pre>");
 	    }
       
@@ -232,9 +251,10 @@ int main (int argc, char **argv, char **env)
         value = atof(buffer);
 
         printf("Thermodynamics properties at temperature %.2f K\n", value);
-        printf("Enthalpy:      % f J/mol\n", enthalpy(val, value)*R*value);
-        printf("Entropy:       % f J/(mol K)\n", entropy(val, value)*R);
-        printf("Specific heat: % f J/(mol K)\n", specific_heat(val, value)*R);
+        printf("Enthalpy:      % f J/mol\n", enthalpy_0(val, value)*R*value);
+        printf("Entropy:       % f J/(mol K)\n", entropy_0(val, value)*R);
+        printf("Specific heat: % f J/(mol K)\n",
+               specific_heat_0(val, value)*R);
       
       }
       printf("</pre>");

@@ -63,6 +63,7 @@ typedef enum
 } problem_t;
 
 
+
 /***************************************************************
 TYPE: Structure to hold information of species contain in the
       thermo data file
@@ -145,6 +146,7 @@ typedef struct _product
   int    *species[STATE_LAST]; // list of possible species for each state
   double *coef[STATE_LAST];    // stoechiometric coefficient of each molecule
 
+  int n_condensed; // number of total possible condensed
   //int    *condensed_ok;        // list containing the condensed species
                                // that respect the criterium to be present
 } product_t;
@@ -168,7 +170,8 @@ typedef struct _equilibrium
   /* list of element in the composition */
   int  *element;
   int   n_element;
-
+  int   is_listed;  /* is true if the element have been listed */
+  
   double entropy;
   //int is_state_set; /* true if you have set the state */
 
@@ -200,7 +203,6 @@ COMMENTS: It should be call before loading the thermo and
 AUTHOR: Antoine Lefebvre
 ***************************************************************/
 int mem_alloc(void);
-
 
 
 int set_verbose(equilibrium_t *e, int v);
@@ -236,7 +238,7 @@ DATE: February 6, 2000
 AUTHOR: Antoine Lefebvre
 **************************************************************/
 int list_element(equilibrium_t *e);
-
+int reset_element_list(equilibrium_t *e);
 
 /************************************************************
 FUNCTION: This function search in thermo_list for all molecule

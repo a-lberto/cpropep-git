@@ -1,8 +1,8 @@
 CC   = gcc
 COPT = -g -Wall
 LIB  =  -lcpropep -lm -lnum -lcgi #-lcruft -lf2c
-LIBDIR = -L../../libnum/ -L../
-INCLUDEDIR = -I../../libnum/ -I../
+LIBDIR = -L../../libnum/ -L../ -L./
+INCLUDEDIR = -I../../libnum/ -I../ -I./
 
 PROG = cgitest
 
@@ -18,8 +18,12 @@ all: $(PROG)
 
 
 $(PROG): $(OBJS)
+	make -C ../ all
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
 
 
 clean:
 	rm -f *.o *~
+
+deep-clean: clean
+	rm -f cgitest

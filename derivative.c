@@ -11,6 +11,7 @@
 
 
 
+
 /* Compute the specific_heat of the mixture using thermodynamics
    derivative with respect to logarithm of temperature */
 double mixture_specific_heat(equilibrium_t *e, double *sol)
@@ -58,15 +59,15 @@ double mixture_specific_heat(equilibrium_t *e, double *sol)
   return cp;
 }
 
-int derivative(equilibrium_t *e)
+int derivative(equilibrium_t *e, deriv_t *d)
 {
   int i;
-  double cp, cv;
+  //double cp, cv;
 
-  double del_lnV_lnT; /* derivative of ln(V) with respect to ln(T)
-                         at constant pressure */
-  double del_lnV_lnP; /* derivative of ln(V) with respect to ln(P)
-                         at constant temperature */
+  //double del_lnV_lnT; /* derivative of ln(V) with respect to ln(T)
+  /*at constant pressure */
+  //double del_lnV_lnP; /* derivative of ln(V) with respect to ln(P)
+  /*                     at constant temperature */
   
   int       size;
   double ** matrix;   
@@ -85,7 +86,7 @@ int derivative(equilibrium_t *e)
 
   fill_temperature_derivative_matrix(matrix, e);
 
-  printf("\n");
+  //printf("\n");
   
   if ( lu(matrix, sol, size) == -1 )
   {
@@ -93,11 +94,14 @@ int derivative(equilibrium_t *e)
   }
   else
   {
-    printf("Temperature derivative results.\n");
-    print_vec(sol, size);
-
-    cp = mixture_specific_heat(e, sol)*R;
-    del_lnV_lnT = 1 + sol[e->n_element + e->p->n[CONDENSED]];
+    if (e->verbose > 1)
+    {
+      printf("Temperature derivative results.\n");
+      print_vec(sol, size);
+    }
+    
+    d->cp = mixture_specific_heat(e, sol)*R;
+    d->del_lnV_lnT = 1 + sol[e->n_element + e->p->n[CONDENSED]];
       
   }
 
@@ -109,25 +113,30 @@ int derivative(equilibrium_t *e)
   }
   else
   {
-    printf("Pressure derivative results.\n");
-    print_vec(sol, size);
-
-    del_lnV_lnP = sol[e->n_element + e->p->n[CONDENSED]] - 1;
+    if (e->verbose > 1)
+    {
+      printf("Pressure derivative results.\n");
+      print_vec(sol, size);
+    }
+    d->del_lnV_lnP = sol[e->n_element + e->p->n[CONDENSED]] - 1;
     
   }
 
-  cv = cp + e->n*R * pow(del_lnV_lnT, 2)/del_lnV_lnP;
+  d->cv = d->cp + e->n*R * pow(d->del_lnV_lnT, 2)/d->del_lnV_lnP;
+  d->cp_cv = d->cp/d->cv;
+  d->isex = -d->cp_cv / d->del_lnV_lnP;
 
-
-  printf("\n");
-  printf("del ln(V)/del ln(T)  = % f\n", del_lnV_lnT);
-  printf("del ln(V)/del ln(P)  = % f\n", del_lnV_lnP);
-  printf("Cp                   = % f\n", cp);
-  printf("Cv                   = % f\n", cv);
-  printf("Cp/Cv                = % f\n", cp/cv);
-  printf("Isentropic exponent  = % f\n", -(cp/cv)/del_lnV_lnP);
-  printf("RT/V                 = % f\n", e->P/e->n);
-  
+  if (e->verbose > 1)
+  {
+    printf("\n");
+    printf("del ln(V)/del ln(T)  = % f\n", d->del_lnV_lnT);
+    printf("del ln(V)/del ln(P)  = % f\n", d->del_lnV_lnP);
+    printf("Cp                   = % f\n", d->cp);
+    printf("Cv                   = % f\n", d->cv);
+    printf("Cp/Cv                = % f\n", d->cp_cv);
+    printf("Isentropic exponent  = % f\n", d->isex);
+    printf("RT/V                 = % f\n", e->P/e->n);
+  }
   free(matrix);
   free(sol);
   return 0;
