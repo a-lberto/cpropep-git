@@ -12,7 +12,7 @@ INCDIR = -I$(ROOT)/libnum/include/ \
          -I$(ROOT)/libcpropep/include/ \
          -I$(ROOT)/libcompat/include/
 
-DEF    = -DGCC
+DEF    = -DGCC -DCONF_FILE=\"/etc/rocketworkbench/cpropep.conf\"
 PROG   = cpropep
 OBJS   = cpropep.o
 

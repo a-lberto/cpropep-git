@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.2 2001/02/22 19:50:10 antoine Exp $ */
+/* $Id: cpropep.c,v 1.3 2001/07/09 13:51:39 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -38,7 +38,9 @@
 //#define FROZEN_MSG      "Time spent for computing frozen performance"
 //#define EQUILIBRIUM_MSG "Time spent for computing equilibrium performance"
 
+#ifndef CONF_FILE
 #define CONF_FILE "cpropep.conf"
+#endif
 
 
 //#undef TIME
