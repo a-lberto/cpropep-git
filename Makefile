@@ -1,34 +1,38 @@
 
-
-
 CC   = gcc
-COPT = -g -Wall
-LIB  = -lcruft -lf2c
+COPT = -g -Wall #-O3 #-pg -O6\
+# -mpentium -ffast-math -funroll-loops -fnonnull-objects\
+# -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
+# -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer
 
-DEF = -DLINUX -DLAPACK
+LIB  = -lnum -lm # -lcruft -lf2c
+LIBDIR = -L.
 
-PROG = num
+DEF = -DLINUX #-DTRUE_ARRAY
+#DEF += -DLAPACK
+PROG = test
 
-OBJS = num.o libnum.o
+OBJS = test.o
+LIBOBJS = lu.o rk4.o general.o print.o sec.o
 LIBNUM = libnum.a
 
 .SUFFIXES: .c
 
-all: $(PROG) $(LIBNUM)
+all: $(LIBNUM) $(PROG)
 
 .c.o:
 	$(CC) $(DEF) $(COPT) -c $*.c -o $*.o
 
-$(LIBNUM): libnum.o
-	ar -r $@ libnum.o
+$(LIBNUM): $(LIBOBJS)
+	ar -r $@ $(LIBOBJS) 
 	ranlib $@
 
 $(PROG): $(OBJS)
-	$(CC) $(COPT) $(OBJS) $(LIB) -o $@
+	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
 
 
 clean:
 	rm -f *.o *~
 
 deep-clean: clean
-	rm -f libnum.a num
+	rm -f $(LIBNUM) $(PROG) 

@@ -21,30 +21,6 @@
 
 
 /**************************************************************
-FUNCTION: This is a function to solve a matrix of linear
-          equation. It use the Gauus elimination method as
-	  explain in 'Advanced engineering mathematics' bye
-	  Erwin Kreyszig.
-
-PARAMETER: **matrix is a pointer to an array of [neq]x[neq+1]
-           which is an augmented matrix.
-	   *solution is an array that will contain the solution
-	   if there is one and junk if there is no solution. It
-	   must be allocated.
-	   neq is the number of unknoen in the system
-
-OUTPUT: 0 on success, -1 on failure
-
-COMMENTS: the number of operation can be estimated by 2*n^3/3
-
-AUTHOR:  Antoine Lefebvre
-
-DATE: February 6, 2000
-***************************************************************/
-int gauss(double **matrix, double *solution, int neq);
-
-
-/**************************************************************
 FUNCTION: This function solve system of linear equation with
           the LU-Factorisation method as explain in
 	  'Advanced engineering mathematics' bye Erwin Kreyszig.
@@ -67,11 +43,7 @@ AUTHOR:  Antoine Lefebvre
 
 DATE: February 6, 2000
 ***************************************************************/
-int lu(double **matrix, double *solution, int neq);
-
-#ifdef lapack
-int matsol(double **matrix, double *solution, int neq);
-#endif
+int lu(double *matrix, double *solution, int neq);
 
 /**************************************************************
 FUNCTION: This function print the coefficient of the matrix to
@@ -79,10 +51,10 @@ FUNCTION: This function print the coefficient of the matrix to
 
 PARAMETER: Same as for gauss
 ***************************************************************/
-int print_matrix(double **matrix, int neq);
+int print_matrix(double *matrix, int neq);
 
 /* same thing but for square matrix instead of (N)x(N-1) */
-int print_square_matrix(double **matrix, int neq);
+int print_square_matrix(double *matrix, int neq);
 
 /**************************************************************
 FUNCTION: This function print the contents of the vector to
@@ -131,6 +103,10 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy,
 /* this function return the nearest integer to a */
 /* it is a replacement of rint which is not ANSI complient */
 int round(double a);
+
+double epsilon(void);
+
+double sec(double (*f)(double x), double x0, double x1, double epsilon);
 
 #endif
 

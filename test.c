@@ -18,75 +18,55 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 //#include <time.h>
 
-#include "libnum.h"
+#include "num.h"
+
+FILE * errorfile;
+FILE * outputfile;
 
 int function(int neq, double time, double *y, double *dy, 
-	     void *data);
+             void *data);
+
+double f(double x);
 
 int main(void)
 {
 
-  /* for timing */
-  /* clock_t start, finish; */
-
+  /*
+  double *matrix;
+  double *solution;
   
-  //const int neq = 3;
-  //int i = 0;
+  matrix = (double *) malloc (sizeof(double)*12);
+  solution = (double *) malloc (sizeof(double)*3);
   
-  //double **mat;
-  //double *ans;
+  matrix[0] = 1;
+  matrix[1] = 1;
+  matrix[2] = 9;
+  matrix[3] = -1;
+  matrix[4] = 1;
+  matrix[5] = 3;
+  matrix[6] = 1;
+  matrix[7] = 1;
+  matrix[8] = 1;
+  matrix[9] = 6;
+  matrix[10] = 2;
+  matrix[11] = 22;
 
+  lu(matrix, solution, 3);
 
-  //mat = (double **)calloc(neq, sizeof(double*));
-  //for (i = 0; i < neq; i++)
-  //{
-  //  mat[i] = (double *)calloc(neq+1, sizeof(double));
-  //}
-  //ans = (double *)calloc(neq, sizeof(double));
+  print_vec(solution, 3);
+  */
 
-  //mat[0][0] = 4;
-  //mat[0][1] = 10;
-  //mat[0][2] = -2;
-  //mat[0][3] = -20;
-  /* mat[0][4] = 54; */
-
-  //mat[1][0] = -1;
-  //mat[1][1] = -15;
-  //mat[1][2] = 3;
-  //mat[1][3] = 30;
-  /* mat[1][4] = 0; */
+  printf("Solution: %f\n",  sec(f, -15, 0, 0.0001));
+    
+  //printf("epsilon: %.16e\n", epsilon());
   
-  //mat[2][0] = 0;
-  //mat[2][1] = 25;
-  //mat[2][2] = -5;
-  //mat[2][3] = -50;
-  /* mat[2][4] = 2; */
-
-  /* mat[3][0] = 43; */
-  /* mat[3][1] = 0; */
-  /* mat[3][2] = 76; */
-  /* mat[3][3] = 0; */
-  /* mat[3][4] = 77; */
-
-  //print_matrix(mat, neq); 
-  
-  //lu(mat, ans, neq);
-  
-  /* gauss(mat, ans, neq); */
-     
-  //print_matrix(mat, neq);
-  //print_vec(ans, neq);
-  
-  //free(mat);
-  //free(ans);
-
+  /*
   int i;
-
   double **ans;
-
   double *ic;
   
   ic = (double *)malloc(sizeof(double) * 4);
@@ -101,8 +81,6 @@ int main(void)
   for (i = 0; i < 101; i++)
     ans[i] = (double *)malloc(sizeof(double) * 4);
  
-  
-
   rk4 (function, 4, 0.1, 10, ic, ans, NULL);
 
   for( i = 0; i < 100; i++)
@@ -114,17 +92,18 @@ int main(void)
 
   free(ic);
   free(ans);
+  */
 
+  return 0;
 }
 
-
-//double ffunction(double t, double y)
-//{
-//  return ( (t - y) / 2.0 );
-//}
+double f(double x)
+{
+  return pow(x-1, 3);
+}
 
 int function(int neq, double time, double *y, double *dy, 
-	     void *data)
+             void *data)
 {
   
   dy[0] = y[1];
