@@ -4,18 +4,17 @@
 
 #include "compat.h"
 #include "return.h"
+
 #include "equilibrium.h"
 #include "derivative.h"
 
-
-
+/*
 typedef struct _frozen_state_t
 {
   float temperature;
   float pressure;
   float velocity;
-
-  float aera_dotm; /* aera / mass flow rate */
+  float aera_dotm; 
   
 } frozen_state_t;
 
@@ -24,12 +23,10 @@ typedef struct _equilibrium_state_t
   float   temperature;
   float   pressure;
   float   velocity;
-
   float   aera_dotm;
-  
   float   molar_mass;
   deriv_t deriv;
-  
+
 } equilibrium_state_t;
 
 typedef struct _performance_t
@@ -41,8 +38,8 @@ typedef struct _performance_t
     float specific_impulse;
     float molar_mass;
 
-    float cp;     /* specific heat */
-    float cp_cv;  /* ratio of specific heat */
+    float cp;  
+    float cp_cv; 
     //float isex;
 
     frozen_state_t chamber;
@@ -65,17 +62,13 @@ typedef struct _performance_t
 
 } performance_t;
 
+*/
+
+int frozen_performance(equilibrium_t *e, double exit_pressure);
+
+int equilibrium_performance(equilibrium_t *e, double exit_pressure);
 
 
-
-int frozen_performance(equilibrium_t *e, performance_t *p,
-                       double exit_pressure);
-
-int equilibrium_performance(equilibrium_t *e, equilibrium_t *ne,
-                            performance_t *p,
-                            double exit_pressure);
-
-double mixture_specific_heat_0(equilibrium_t *e, double temp);
 
 #endif
 

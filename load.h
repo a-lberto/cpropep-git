@@ -18,8 +18,6 @@ AUTHOR: Antoine Lefebvre
 ****************************************************************/
 int load_propellant(char *filename);
 
-
-
 /***************************************************************
 FUNCTION: Load the thermo data contain in filename
 

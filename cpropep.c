@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.19 2000/06/14 00:27:50 antoine Exp $ */
+/* $Id: cpropep.c,v 1.20 2000/06/20 02:15:12 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -13,15 +13,15 @@
 #include <malloc.h>
 #include <time.h>
 
-#include "print.h"
-#include "equilibrium.h"
+#include "getopt.h"
 #include "load.h"
-#include "libnum.h"
 
+#include "equilibrium.h"
 #include "performance.h"
 #include "derivative.h"
+#include "thermo.h"
 
-#include "getopt.h"
+#include "print.h"
 
 #include "compat.h"
 #include "return.h"
@@ -47,16 +47,6 @@
 
 #define MAX_CASE 10
 
-/* global variable containing the information about chemical species */
-extern propellant_t  *propellant_list;
-extern thermo_t	     *thermo_list;
-
-extern double conc_tol;
-extern double conv_tol;
-extern int    iteration_max;
-
-extern FILE * errorfile;
-extern FILE * outputfile;
 
 typedef enum _p
 {
@@ -243,11 +233,8 @@ int main(int argc, char *argv[])
   int i, c, v = 0;
   char filename[FILENAME_MAX];
   FILE *fd = NULL;
-  equilibrium_t *equil, *exit_equil;
 
-  /* hold performance informations */
-  performance_t performance;
-  deriv_t deriv;
+  equilibrium_t *equil, *frozen, *shifting; 
   
   int thermo_loaded     = 0;
   int propellant_loaded = 0;
@@ -266,10 +253,6 @@ int main(int argc, char *argv[])
   for (i = 0; i < MAX_CASE; i++)
     case_list[i].p = -1;
 
-      
-  performance.frozen_ok = false;
-  performance.equilibrium_ok = false;
-  
   errorfile = stderr;
   outputfile = stdout;
   
@@ -424,16 +407,29 @@ int main(int argc, char *argv[])
   
   if (fd != NULL)
   {
-    equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
+    equil = (equilibrium_t *) malloc (sizeof (equilibrium_t));
     initialize_equilibrium(equil);
-    exit_equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
-    initialize_equilibrium(exit_equil);
+
+
+    frozen   = (equilibrium_t *) malloc (sizeof(equilibrium_t)*3);
+    shifting = (equilibrium_t *) malloc (sizeof(equilibrium_t)*3);
+    for (i = 0; i < 3; i++)
+    {
+      initialize_equilibrium(frozen + i);
+      initialize_equilibrium(shifting + i);
+    }
+    
     
     load_input(fd, equil, case_list, &exit_pressure);
     
     fclose(fd);
-    set_verbose(equil, v);
+    global_verbose = v;
+    //set_verbose(equil, v);
 
+    list_element(equil);
+    list_product(equil);
+    
+    
     i = 0;
     while ((case_list[i].p != -1) && (i <= MAX_CASE))
     {
@@ -449,10 +445,8 @@ int main(int argc, char *argv[])
             TIME(if (equilibrium(equil, TP)) break,
                  CHAMBER_MSG);
 
-            derivative(equil, &deriv);
-            print_product_properties(equil);
-            print_derivative_results(&deriv);
-            print_product_composition(equil);
+            print_product_properties(equil, 1);
+            print_product_composition(equil, 1);
             break;
         case FIND_FLAME_TEMPERATURE:
             set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
@@ -460,10 +454,9 @@ int main(int argc, char *argv[])
             print_propellant_composition(equil);
             TIME(if (equilibrium(equil, HP)) break,
                  CHAMBER_MSG);
-            derivative(equil, &deriv);
-            print_product_properties(equil);
-            print_derivative_results(&deriv);
-            print_product_composition(equil);
+            
+            print_product_properties(equil, 1);
+            print_product_composition(equil, 1);
             break;
         case MULTIPLE_FLAME_TEMPERATURE:
             print_propellant_composition(equil);
@@ -475,57 +468,62 @@ int main(int argc, char *argv[])
               set_state(equil, 0, param);
 
               equilibrium(equil, HP);
-              derivative(equil, &deriv);
-
-              print_product_properties(equil);
-              print_derivative_results(&deriv);
-              print_product_composition(equil);
+              
+              print_product_properties(equil, 1);
+              print_product_composition(equil, 1);
             }
             break;
               
         case FROZEN_PERFORMANCE:
-            exit_pressure = case_list[i].arg[2];
-            set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
+
+            copy_equilibrium(frozen, equil);
             
-            print_propellant_composition(equil);
-            TIME(if (equilibrium(equil, HP)) break,
+            exit_pressure = case_list[i].arg[2];
+            set_state(frozen, case_list[i].arg[0], case_list[i].arg[1]);
+
+            print_propellant_composition(frozen);
+
+            TIME(if (equilibrium(frozen, HP)) break,
                  CHAMBER_MSG);
-            printf("--- Chamber equilibrium properties ---\n");
-            derivative(equil, &deriv);
-            print_product_properties(equil);
-            print_derivative_results(&deriv);
-            print_product_composition(equil);
-            TIME(frozen_performance(equil, &performance, exit_pressure),
+
+            TIME(frozen_performance(frozen, exit_pressure),
                  FROZEN_MSG);
-            print_performance_information(&performance);
+            
+            print_product_properties(frozen, 3);
+            print_performance_information(frozen, 3);
+            print_product_composition(frozen, 3);
+            
           break;
         case EQUILIBRIUM_PERFORMANCE:
+            copy_equilibrium(shifting, equil);
+            
             exit_pressure = case_list[i].arg[2];
-            set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
+            set_state(shifting, case_list[i].arg[0], case_list[i].arg[1]);
             
-            print_propellant_composition(equil);
-            TIME(if (equilibrium(equil, HP)) break,
+            print_propellant_composition(shifting);
+            
+            TIME(if (equilibrium(shifting, HP)) break,
                  CHAMBER_MSG);
-            printf("--- Chamber equilibrium properties ---\n");
-            derivative(equil, &deriv);
-            print_product_properties(equil);
-            print_derivative_results(&deriv);
-            print_product_composition(equil);
-            TIME(equilibrium_performance(equil, exit_equil, &performance,
-                                         exit_pressure),
+
+            TIME(equilibrium_performance(shifting, exit_pressure),
                  EQUILIBRIUM_MSG);
-            print_performance_information(&performance);
-            
-            printf("--- Exit equilibrium properties ---\n");
-            print_product_properties(exit_equil);
-            print_product_composition(exit_equil);
+
+            print_product_properties(shifting, 3);
+            print_performance_information(shifting, 3);
+            print_product_composition(shifting, 3);
             
             break;
         case ALL_PERFORMANCE:
+/*
+            copy_equilibrium(frozen, equil);
+            copy_equilibrium(shifting, equil);
+            
             exit_pressure = case_list[i].arg[2];
-            set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
+            set_state(frozen, case_list[i].arg[0], case_list[i].arg[1]);
+            set_state(shifting, case_list[i].arg[0], case_list[i].arg[1]);
             
             print_propellant_composition(equil);
+
             TIME(if (equilibrium(equil, HP)) break,
                CHAMBER_MSG);
             printf("--- Chamber equilibrium properties ---\n");
@@ -543,9 +541,10 @@ int main(int argc, char *argv[])
             printf("--- Exit equilibrium properties ---\n");
             print_product_properties(exit_equil);
             print_product_composition(exit_equil);
-            
+*/
             break;
         case MULTIPLE_PERFORMANCE:
+/*
             set_state(equil, case_list[i].arg[0], case_list[i].arg[1]);
             
             print_propellant_composition(equil);
@@ -568,13 +567,14 @@ int main(int argc, char *argv[])
               print_performance_information(&performance);
             }
             break;
+*/
       }
       i++;
     }
-    dealloc_equilibrium (equil);
-    dealloc_equilibrium (exit_equil);
     free (equil);
-    free (exit_equil);
+    free (frozen);
+    free (shifting);
+    
   }
   
   free (propellant_list);

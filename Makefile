@@ -9,13 +9,13 @@ LIB  =  -lcpropep -lm -lnum #-lcruft -lf2c
 LIBDIR = -L../libnum/ -L.
 INCLUDEDIR = -I../libnum/ -I.
 
-DEF = -DGCC -DTRUE_ARRAY
+DEF = -DGCC #-DTRUE_ARRAY
 
 LIBNAME = libcpropep.a
 
 PROG = cpropep
 
-LIBOBJS = equilibrium.o load.o print.o performance.o derivative.o
+LIBOBJS = equilibrium.o load.o print.o performance.o derivative.o thermo.o
 
 OBJS = cpropep.o getopt.o 
 

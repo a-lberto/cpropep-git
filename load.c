@@ -4,18 +4,10 @@
 
 #include "equilibrium.h"
 #include "load.h"
+#include "thermo.h"
 
 #include "conversion.h"
 #include "return.h"
-
-
-extern propellant_t	*propellant_list;
-extern thermo_t	    *thermo_list;
-
-extern unsigned long num_thermo;
-extern unsigned long num_propellant;
-
-extern char symb[][3];
 
 
 /***************************************************************************
