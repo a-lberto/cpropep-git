@@ -145,7 +145,7 @@ typedef struct _product
   int    *species[STATE_LAST]; // list of possible species for each state
   double *coef[STATE_LAST];    // stoechiometric coefficient of each molecule
 
-  int    *condensed_ok;        // list containing the condensed species
+  //int    *condensed_ok;        // list containing the condensed species
                                // that respect the criterium to be present
 } product_t;
 
@@ -169,7 +169,9 @@ typedef struct _equilibrium
   int  *element;
   int   n_element;
 
-  int is_state_set; /* true if you have set the state */
+  double entropy;
+  //int is_state_set; /* true if you have set the state */
+
   double T; /* temperature */
   double P; /* pressure */
 
@@ -470,8 +472,9 @@ COMMENTS: It use the theory explain in
 
 AUTHOR:   Antoine Lefebvre
 ****************************************************************/
-int fill_matrix(double **matrix, equilibrium_t *e, problem_t P);
+int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P);
 
+int fill_matrix(double **matrix, equilibrium_t *e);
 
 /****************************************************************
 FUNCTION: This function compute the equilibrium composition at

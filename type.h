@@ -1,6 +1,8 @@
 #ifndef type_h
 #define type_h
 
+#define  SUCCESS 0
+#define  ERROR   1
 
 typedef enum
 {
@@ -8,10 +10,6 @@ typedef enum
   true = 1
 } bool;
 
-typedef enum
-{
-  SUCCESS = 0,
-  ERROR   = 1
-};
+
 
 #endif

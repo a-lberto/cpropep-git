@@ -21,12 +21,15 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "type.h"
+#include "derivative.h"
+
 #include "equilibrium.h"
 
 #define TEMP_ITERATION_MAX  8
 
 double velocity_of_flow(equilibrium_t *e, double exit_temperature);
-double compute_temperature(equilibrium_t *e, double pressure);
+double compute_temperature(equilibrium_t *e, double pressure, problem_t P);
 
 double g = 9.80665;
 
@@ -55,7 +58,7 @@ double product_enthalpy_exit(equilibrium_t *e, double temp)
   return enth;
 }
 
-double product_specific_heat(equilibrium_t *e, double temp)
+double mixture_specific_heat_0(equilibrium_t *e, double temp)
 {
   int i;
   double cp = 0.0;
@@ -73,6 +76,7 @@ double product_specific_heat(equilibrium_t *e, double temp)
   return cp;
 }
 
+
 int frozen_performance(equilibrium_t *e, double exit_pressure)
 {
   double sound_velocity;
@@ -89,84 +93,98 @@ int frozen_performance(equilibrium_t *e, double exit_pressure)
                    isentropic exponent for frozen problem */
   
   /* find the equilibrium composition in the chamber */
-  equilibrium(e, HP);
+  if (equilibrium(e, HP))
+  {
+    printf("No equilibrium, performance evaluation aborted.\n");
+    return ERROR;
+  }
+
+  derivative(e);
   
   /* Find the exit temperature */
 
  
-  exit_temperature = compute_temperature(e, exit_pressure);
+  exit_temperature = compute_temperature(e, exit_pressure, HP);
   
   /* We must check if the exit temperature is more than 50 K lower
      than any transition temperature of condensed species */
 
+  
   printf("\nFrozen performance characteristics.\n");
   printf("-----------------------------------\n");
-  printf("Exit temperature: %f K\n", exit_temperature);
-  printf("Exit pressure   : %f atm\n", exit_pressure);
-  printf("Velocity of flow: %f m/s\n", velocity_of_flow(e, exit_temperature));
-  printf("Specific impulse: %f s\n", velocity_of_flow(e, exit_temperature)/g);
+  printf("Exit temperature  : %f K\n",  exit_temperature);
+  printf("Exit pressure     : %f atm\n", exit_pressure);
+  printf("Velocity of flow  : %f m/s\n", velocity_of_flow(e,
+                                                          exit_temperature));
+  printf("Specific impulse  : %f s\n",  velocity_of_flow(e,
+                                                         exit_temperature)/g);
 
 
   /* Computing throat condition */
 
   /* Cp of the combustion point */
-  cp = product_specific_heat(e, e->T)*R;
+  cp = mixture_specific_heat_0(e, e->T)*R;
   cp_cv = cp / (cp - e->n*R);
  
-  printf("Cp/Cv : %f\n", cp_cv);
+  printf("Cp/Cv             : %f\n", cp_cv);
+  printf("Cp                : %f\n", cp);
 
+  
   /* Approximation of the throat pressure */
   pc_pt = pow(cp_cv/2 + 0.5, cp_cv/(cp_cv - 1) );
-
   do
   {
-    //printf("Pc/Pt: %f\n", pc_pt);
-
-    throat_temperature = compute_temperature(e, e->P/pc_pt);
-
+    throat_temperature = compute_temperature(e, e->P/pc_pt, HP);
     sound_velocity = sqrt( 1000*e->n*R*throat_temperature*
                            cp_cv/propellant_mass(e));
-    
     flow_velocity = velocity_of_flow(e, throat_temperature);
-
-    //printf("Flow velocity: %f\n", flow_velocity);
-    //printf("Sound velocity: %f\n", sound_velocity);
-    
     pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
                            /(1000*(cp_cv + 1)*e->n*R*throat_temperature
                              /propellant_mass(e))));
-    
   } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
                  /pow(flow_velocity, 2)) > 0.4e-4);
-  
-  printf("Pc/Pt: %f\n", pc_pt);
+
+  printf("\nThroat conditions\n");
+  printf("Pc/Pt             : %f\n", pc_pt);
   printf("Throat temperature: %f\n", throat_temperature);
-  printf("Sound velocity: %f\n", sound_velocity);
+  printf("Sound velocity    : %f\n", sound_velocity);
   
-  return 0;
+  return SUCCESS;
   
 }
 
-double compute_temperature(equilibrium_t *e, double pressure)
+
+
+
+    
+/* The temperature could be found by entropy conservation with a
+   specified pressure */
+double compute_temperature(equilibrium_t *e, double pressure, problem_t P)
 {
   int i = 0;
 
   double delta_lnt;
   double p_entropy;   /* Enthalpy of the mixture (chamber) */
   double temperature;
-
   
   /* The first approximation is the chamber temperature */
   temperature = e->T; 
   p_entropy = product_entropy(e);
+  // e->entropy;//product_entropy(e);
   
   do
   {
     delta_lnt = (p_entropy  -
                  product_entropy_exit(e, pressure, temperature))
-      /product_specific_heat(e, temperature);
+      /mixture_specific_heat_0(e, temperature);
 
     temperature = exp (log(temperature) + delta_lnt);
+
+    
+    if (P == SP)
+      equilibrium(e, SP);
+    
+    
     i++;
     
   } while (fabs(delta_lnt) >= 0.5e-4 && i < TEMP_ITERATION_MAX);
@@ -184,6 +202,58 @@ double velocity_of_flow(equilibrium_t *e, double exit_temperature)
 }
 
 
+int equilibrium_performance(equilibrium_t *e, double exit_pressure)
+{
+
+  double sound_velocity;
+  double flow_velocity;
+
+  double throat_temperature;
+  
+  double exit_temperature;
+
+  double pc_pt;
+  
+  double cp;
+  double cp_cv; /* Ratio of specific heat, it is equal to the
+                   isentropic exponent for frozen problem */
+
+  
+  /* Computing throat condition */
+
+  /* Cp of the combustion point */
+  cp = mixture_specific_heat_0(e, e->T)*R;
+  cp_cv = cp / (cp - e->n*R);
+ 
+  printf("Cp/Cv             : %f\n", cp_cv);
+  printf("Cp                : %f\n", cp);
+
+  
+  /* Approximation of the throat pressure */
+  pc_pt = pow(cp_cv/2 + 0.5, cp_cv/(cp_cv - 1) );
+  do
+  {
+    throat_temperature = compute_temperature(e, e->P/pc_pt, HP);
+    sound_velocity = sqrt( 1000*e->n*R*throat_temperature*
+                           cp_cv/propellant_mass(e));
+    flow_velocity = velocity_of_flow(e, throat_temperature);
+    pc_pt = pc_pt / ( 1 + ((pow(flow_velocity, 2) - pow(sound_velocity, 2))
+                           /(1000*(cp_cv + 1)*e->n*R*throat_temperature
+                             /propellant_mass(e))));
+  } while (fabs( (pow(flow_velocity, 2) - pow(sound_velocity, 2))
+                 /pow(flow_velocity, 2)) > 0.4e-4);
+
+  printf("\nThroat conditions\n");
+  printf("Pc/Pt             : %f\n", pc_pt);
+  printf("Throat temperature: %f\n", throat_temperature);
+  printf("Sound velocity    : %f\n", sound_velocity);
 
 
+
+
+  
+  e->entropy = product_entropy(e);
+
+  return 0;
+}
 

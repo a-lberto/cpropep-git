@@ -102,8 +102,9 @@ const float  R = 8.3143;
 double enthalpy_0(int sp, float T)
 {
   thermo_t *s = (thermo_list + sp);
+
   double val;
-  int i, pos;
+  int    pos, i;
 
   if (T < s->range[0][0]) /* Temperature below the lower range */
   {
@@ -142,7 +143,7 @@ double entropy_0(int sp, float T)
 {
   thermo_t *s = (thermo_list + sp);
   double val;
-  int i, pos;
+  int    pos, i;
 
   if (T < s->range[0][0])
   {
@@ -182,7 +183,7 @@ double specific_heat_0(int sp, float T)
 {
   thermo_t *s = (thermo_list + sp);
   double val;
-  int i, pos;
+  int    pos, i;
 
   if (T < s->range[0][0])
   {
@@ -306,7 +307,7 @@ double heat_of_formation(int molecule)
 }
 
 
-double propellant_enthalpy(equilibrium_t *e) //composition_t *c)
+double propellant_enthalpy(equilibrium_t *e)
 {
   int i;
   double h = 0.0;
@@ -460,6 +461,7 @@ int list_product(equilibrium_t *e)
   int n = 0;   // global counter (number of species found)
   int st;      // temporary variable to hold the state of one specie
   int ok = 1;
+
   
   for (j = 0; j < MAX_THERMO; j++)
   {
@@ -496,6 +498,7 @@ int list_product(equilibrium_t *e)
   }
   
   // reallocate the momory to the minimum size
+  /*
   for (i = 0; i < STATE_LAST; i++)
   {
     if ((e->p->species[i] = (int *)realloc (e->p->species[i], 
@@ -508,6 +511,7 @@ int list_product(equilibrium_t *e)
         == NULL)
       printf("Reallocation of memory failed\n");
   }
+  */
   
   /* initialize tho mol number to 0.1mol/(nb of gazeous species) */
   for (i = 0; i < e->p->n[GAS]; i++)
@@ -549,9 +553,9 @@ int mem_alloc(void)
             MAX_PROPELLANT, sizeof(propellant_t) * MAX_PROPELLANT);
     /* Clean up */
     free (thermo_list);
-    return 1;
+    return ERROR;
   }
-  return 0;
+  return SUCCESS;
 }
 
 int initialize_product(product_t *p)
@@ -591,7 +595,7 @@ int initialize_equilibrium(equilibrium_t *e)
   /* no equilibrium yet */
   e->isequil = 0;
   /* the state have not been set */
-  e->is_state_set = 0;
+  //e->is_state_set = 0;
   
   /* allocate a product structure */
   e->p = (product_t *)     malloc (sizeof(product_t));
@@ -736,7 +740,7 @@ int initial_estimate(equilibrium_t *e)
 Theorical Evaluation of chemical propellant
 by Roger Lawrence Wilkins
 Prentice-Hall International series in space technology */
-int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
+int fill_equilibrium_matrix(double **matrix, equilibrium_t *e, problem_t P)
 {
 
   int i, j, k;
@@ -752,42 +756,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   for (k = 0; k < e->p->n[GAS]; k++)
     mol += e->p->coef[GAS][k]; 
 
-
-  // fill the matrix (part with the Lagrange multipliers)
-  for (i = 0; i < e->n_element; i++) // each column
-  {
-    for (j = 0; j < e->n_element; j++) // each row
-    {
-      tmp = 0.0;
-      for (k = 0; k < e->p->n[GAS]; k++) {
-        tmp += product_element_coef( e->element[j], e->p->species[GAS][k]) * 
-          product_element_coef( e->element[i], e->p->species[GAS][k] ) * 
-          e->p->coef[GAS][k];
-      }
-      matrix[j][i] = tmp;
-    }
-  }
-  
-  // Delta n
-  for (i = 0; i < e->p->n[CONDENSED]; i++) // column
-  {
-    for (j = 0; j < e->n_element; j++) // row
-    {
-      matrix[j][i + e->n_element ] = product_element_coef(e->element[j], 
-                                                          e->p->species[CONDENSED][i]);
-    }
-  } 
-  
-  // delta ln(n)
-  for (j = 0; j < e->n_element; j++)
-  {
-    tmp = 0.0;
-    for (k = 0; k < e->p->n[GAS]; k++) {
-      tmp += product_element_coef( e->element[j], e->p->species[GAS][k]) * 
-        e->p->coef[GAS][k];
-    }
-    matrix[j][ e->n_element + e->p->n[CONDENSED] ] = tmp;
-  }
+  fill_matrix(matrix, e);
   
   // delta ln(T) (for SP and HP only)
   if (P != TP)
@@ -802,7 +771,7 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
       matrix[j][ e->n_element + e->p->n[CONDENSED] + 1] = tmp;
     }
   }
-  
+
   // right side
   for (j = 0; j < e->n_element; j++)
   {
@@ -827,35 +796,16 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
     
     matrix[j][ e->n_element + e->p->n[CONDENSED] + roff ] = tmp;  
   }
-  
-  //second row
-  for (i = 0; i < e->n_element; i++) // column
-  {
-    for (j = 0; j < e->p->n[CONDENSED]; j++) // row
-    {
-      /* copy the symetric part of the matrix */
-      matrix[j + e->n_element ][i] = matrix[i][j + e->n_element ];
-    }
-  }
-  
-  /* set to zero */
-  for (i = 0; i < e->p->n[CONDENSED]+1; i++) // column
-  {
-    for (j = 0; j < e->p->n[CONDENSED]; j++) // row
-    {
-      matrix[j + e->n_element ][i + e->n_element] = 0;
-    }
-  }
-  
-  /* delta ln(T) */
+
+
+   /* delta ln(T) */
   if (P != TP)
   {
     for (j = 0; j < e->p->n[CONDENSED]; j++) // row
       matrix[ j + e->n_element ][ e->n_element + e->p->n[CONDENSED] + 1] = 
         enthalpy_0( e->p->species[CONDENSED][j], e->T);
   }
-
-
+  
   // right side
   for (j = 0; j < e->p->n[CONDENSED]; j++) // row
   {
@@ -864,31 +814,23 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
              e->n, e->T, e->P);  
   }
 
-  // third big row
-  for (i = 0; i < e->n_element; i++) // each column
-  {   
-    /* copy the symetric part of the matrix */
-    matrix[ e->n_element + e->p->n[CONDENSED] ][i] =
-      matrix[i][ e->n_element + e->p->n[CONDENSED] ];
-  }
 
-  /* set to zero */
-  for (i = 0; i < e->p->n[CONDENSED]; i++) // column
-  {
-      matrix[e->n_element + e->p->n[CONDENSED] ][i + e->n_element] = 0;
-  }
   
   // delta ln(n)
   matrix[e->n_element + e->p->n[CONDENSED]][e->n_element + e->p->n[CONDENSED]]
     =  mol - e->n;
 
+  
   /* delta ln(T) */
-  tmp = 0.0;
-  for (k = 0; k < e->p->n[GAS]; k++)
-    tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T ); 
-  matrix[e->n_element + e->p->n[CONDENSED]][e->n_element + e->p->n[CONDENSED] 
-                                           + 1] = tmp;
-
+  if (P != TP)
+  {
+    tmp = 0.0;
+    for (k = 0; k < e->p->n[GAS]; k++)
+      tmp += e->p->coef[GAS][k]*enthalpy_0( e->p->species[GAS][k], e->T ); 
+    matrix[e->n_element + e->p->n[CONDENSED]][e->n_element
+                                             + e->p->n[CONDENSED]+ 1] = tmp;
+  }
+  
   // right side
   tmp = 0.0;
   for (k = 0; k < e->p->n[GAS]; k++)
@@ -946,17 +888,6 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
 
     /* right side */
     tmp = 0.0;
-    /* enthalpy of reactant (not sure for the value of R */
-    //for (k = 0; k < e->c->ncomp; k++)
-    //  tmp += e->c->coef[k]*heat_of_formation( e->c->molecule[k] );
- 
-    //for (k = 0; k < e->p->n[GAS]; k++)
-    //  tmp -= e->p->coef[GAS][k]*enthalpy( e->p->species[GAS][k], e->T);
-
-    //for (k = 0; k < e->p->n[CONDENSED]; k++)
-    //  tmp -= e->p->coef[CONDENSED][k]*enthalpy( e->p->species[CONDENSED][k], 
-    //                                            e->T);
-
     tmp = propellant_enthalpy(e) - product_enthalpy(e);
     
     for (k = 0; k < e->p->n[GAS]; k++)
@@ -1017,14 +948,14 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
                                                  e->p->n[CONDENSED] + 1] = tmp;
     
     
-    tmp = 0.0;
+    //tmp = 0.0;
     /* entropy of reactant (not sure for the value of R */
-    tmp += 132; // assign entropy
+    tmp = e->entropy; // assign entropy
 
     tmp -= product_entropy(e);
       
-      //for (k = 0; k < e->p->n[GAS]; k++)
-      //tmp -= e->p->coef[GAS][k]*entropy_0( e->p->species[GAS][k], e->T);
+    //for (k = 0; k < e->p->n[GAS]; k++)
+    //tmp -= e->p->coef[GAS][k]*entropy_0( e->p->species[GAS][k], e->T);
 
     tmp += e->n;
 
@@ -1044,6 +975,88 @@ int fill_matrix(double **matrix, equilibrium_t *e, problem_t P)
   }
   return 0;
 }
+
+/* This part of the matrix is the same for equilibrium and derivative */
+int fill_matrix(double **matrix, equilibrium_t *e)
+{
+
+  int i, j, k;
+  double tmp;
+
+  // fill the matrix (part with the Lagrange multipliers)
+  for (i = 0; i < e->n_element; i++) // each column
+  {
+    for (j = 0; j < e->n_element; j++) // each row
+    {
+      tmp = 0.0;
+      for (k = 0; k < e->p->n[GAS]; k++) {
+        tmp += product_element_coef( e->element[j], e->p->species[GAS][k]) * 
+          product_element_coef( e->element[i], e->p->species[GAS][k] ) * 
+          e->p->coef[GAS][k];
+      }
+      matrix[j][i] = tmp;
+    }
+  }
+  
+  // Delta n
+  for (i = 0; i < e->p->n[CONDENSED]; i++) // column
+  {
+    for (j = 0; j < e->n_element; j++) // row
+    {
+      matrix[j][i + e->n_element ] =
+        product_element_coef(e->element[j], e->p->species[CONDENSED][i]);
+    }
+  } 
+
+  
+  // delta ln(n)
+  for (j = 0; j < e->n_element; j++)
+  {
+    tmp = 0.0;
+    for (k = 0; k < e->p->n[GAS]; k++) {
+      tmp += product_element_coef( e->element[j], e->p->species[GAS][k]) * 
+        e->p->coef[GAS][k];
+    }
+    matrix[j][ e->n_element + e->p->n[CONDENSED] ] = tmp;
+  }
+   
+  //second row
+  for (i = 0; i < e->n_element; i++) // column
+  {
+    for (j = 0; j < e->p->n[CONDENSED]; j++) // row
+    {
+      /* copy the symetric part of the matrix */
+      matrix[j + e->n_element ][i] = matrix[i][j + e->n_element ];
+    }
+  }
+  
+  /* set to zero */
+  for (i = 0; i < e->p->n[CONDENSED]+1; i++) // column
+  {
+    for (j = 0; j < e->p->n[CONDENSED]; j++) // row
+    {
+      matrix[j + e->n_element ][i + e->n_element] = 0;
+    }
+  }
+  
+ 
+  // third big row
+  for (i = 0; i < e->n_element; i++) // each column
+  {   
+    /* copy the symetric part of the matrix */
+    matrix[ e->n_element + e->p->n[CONDENSED] ][i] =
+      matrix[i][ e->n_element + e->p->n[CONDENSED] ];
+  }
+
+  /* set to zero */
+  for (i = 0; i < e->p->n[CONDENSED]; i++) // column
+  {
+      matrix[e->n_element + e->p->n[CONDENSED] ][i + e->n_element] = 0;
+  }
+  
+  return 0;
+}
+
 
 
 /* may be optimize!!!!!!!! */
@@ -1287,9 +1300,14 @@ int equilibrium(equilibrium_t *equil, problem_t P)
  
   print_propellant_composition(equil);
 
-  list_element(equil);
-  list_product(equil);
-
+  /* Could cause the problem...*/
+  if (P != SP)
+  {
+    list_element(equil);
+    list_product(equil);
+  }
+  /**/
+  
   printf("----------------------\n");
   printf("Beginning computation\n");
 
@@ -1325,7 +1343,7 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     while (!solution_ok)
     {
       global_error = 0;
-      fill_matrix(matrix, equil, P);
+      fill_equilibrium_matrix(matrix, equil, P);
 
       if (global_error)
         printf("Global error occur\n"); /* probably a condensed that could
@@ -1435,18 +1453,23 @@ int equilibrium(equilibrium_t *equil, problem_t P)
     convergence_ok = true;
     
   } /* end of main loop */
+
+  free (sol);
+  free (matrix);
   
   if (k == iteration_max)
   {
     printf("\n");
     printf("Maximum number of %d iterations attain\n", iteration_max);
-    printf("Don't thrust results.\n");
+    printf("Don't thrust results.\n"); 
+    return ERROR;
   }
   else if (stop)
   {
     printf("\n");
     printf("Problem computing equilibrium...aborted.\n");
     printf("Don't thrust results.\n");
+    return ERROR;
   }
   
   printf("---------------------\n");
@@ -1455,10 +1478,9 @@ int equilibrium(equilibrium_t *equil, problem_t P)
   print_product_composition(equil);
   printf("Temperature: \t\t % .2f K\n", equil->T);
   printf("Pressure:    \t\t % .2f atm\n", equil->P);
+
   
-  free(sol);
-  free (matrix);
-  return 0;
+  return SUCCESS;
 }
   
 

@@ -11,7 +11,7 @@ LIBNAME = libcpropep.a
 
 PROG = cpropep
 
-LIBOBJS = equilibrium.o load.o print.o performance.o
+LIBOBJS = equilibrium.o load.o print.o performance.o derivative.o
 
 OBJS = cpropep.o getopt.o
 
@@ -26,9 +26,12 @@ $(LIBNAME): $(LIBOBJS)
 	ar -r $@ $(LIBOBJS)
 	ranlib $@
 
-$(PROG): $(OBJS)
+$(PROG): $(OBJS) $(LIBNAME)
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
-
 
 clean:
 	rm -f *.o *~
+
+deep-clean: clean
+	rm -f $(PROG) $(LIBNAME)
+
