@@ -14,8 +14,6 @@ LIBNAME  = libthermo.a
 
 LIBOBJS  = load.o thermo.o
 
-.SUFFIXES: .c
-
 all: $(LIBNAME)
 
 .c.o:

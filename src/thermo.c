@@ -1,6 +1,6 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.1 2000/10/13 20:20:23 antoine Exp $ */
+/* $Id: thermo.c,v 1.2 2001/02/22 19:48:44 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -383,7 +383,7 @@ int atomic_number(char *symbole)
   /* find the atomic number of the element */
   for (i = 0; i < N_SYMB; i++)
   {
-    if (!strcmp(symbole, symb[i]))
+    if (!STRCASECMP(symbole, symb[i]))
     {
       element = i;
       break;
