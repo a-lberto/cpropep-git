@@ -13,7 +13,7 @@ DEF = -DGCC #-DTRUE_ARRAY
 
 PROG = cpropep
 
-OBJS = cpropep.o getopt.o 
+OBJS = cpropep.o
 
 .SUFFIXES: .c
 
