@@ -1,6 +1,6 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.2 2000/08/06 00:19:14 antoine Exp $ */
+/* $Id: thermo.c,v 1.3 2000/09/04 19:24:03 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -549,3 +549,15 @@ int propellant_search_by_formula(char *str)
 }
 
 
+/* Mass of propellant in gram */
+double propellant_mass(equilibrium_t *e)
+{
+  int i;
+  double mass = 0.0;
+  for (i = 0; i < e->propellant.ncomp; i++)
+  {
+    mass += e->propellant.coef[i] *
+      propellant_molar_mass(e->propellant.molecule[i]);
+  }
+  return mass;
+}

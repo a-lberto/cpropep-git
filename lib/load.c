@@ -33,6 +33,8 @@ int load_thermo(char *filename)
   
   int i = 0;
   int j, k, l;
+
+  bool ok;
   
   char buf[88], *buf_ptr, tmp[32], *tmp_ptr;
   buf_ptr = &buf[0];
@@ -207,13 +209,17 @@ int load_thermo(char *filename)
 			the previous one but in a different state ... */
 			if ((thermo_list + i)->heat == 0 && i != 0)
 			{
+        ok = true;
 				for (j = 0; j < 5; j++)
 				{
 					/* set to the same value as the previous one if the same */
-					if (!(!((thermo_list+i)->coef[j] == (thermo_list+i-1)->coef[j] &&
-                  (thermo_list+i)->elem[j] == (thermo_list+i-1)->elem[j])))
-						(thermo_list+i)->heat = (thermo_list+i-1)->heat; 
+					if (!((thermo_list+i)->coef[j] == (thermo_list+i-1)->coef[j] &&
+                (thermo_list+i)->elem[j] == (thermo_list+i-1)->elem[j]))
+            ok = false;
+						 
 				}
+        if (ok)
+          (thermo_list+i)->heat = (thermo_list+i-1)->heat;
 			}
             
 			for (j = 0; j < (thermo_list + i)->nint; j++)

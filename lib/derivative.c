@@ -1,6 +1,6 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.2 2000/08/31 23:46:10 antoine Exp $ */
+/* $Id: derivative.c,v 1.3 2000/09/04 19:24:03 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "libnum.h"
+#include "num.h"
 
 #include "derivative.h"
 #include "equilibrium.h"

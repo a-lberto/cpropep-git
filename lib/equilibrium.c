@@ -1,5 +1,5 @@
 /* equilibrium.c  -  Responsible of the chemical equilibrium          */
-/* $Id: equilibrium.c,v 1.2 2000/08/31 23:46:10 antoine Exp $ */
+/* $Id: equilibrium.c,v 1.3 2000/09/04 19:24:03 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -12,7 +12,7 @@
 #include <math.h>
 #include <ctype.h>
 
-#include "libnum.h" /* matrix solution */
+#include "num.h" /* matrix solution */
 
 #include "print.h"
 #include "equilibrium.h"
@@ -268,18 +268,6 @@ int add_in_propellant(equilibrium_t *e, int sp, double mol)
   return 0;
 }
 
-/* Mass of propellant in gram */
-double propellant_mass(equilibrium_t *e)
-{
-  int i;
-  double mass = 0.0;
-  for (i = 0; i < e->propellant.ncomp; i++)
-  {
-    mass += e->propellant.coef[i] *
-      propellant_molar_mass(e->propellant.molecule[i]);
-  }
-  return mass;
-}
 
 int product_element_coef(int element, int molecule)
 {

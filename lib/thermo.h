@@ -212,7 +212,7 @@ double propellant_molar_mass(int molecule);
 
 
 
-
+double propellant_mass(equilibrium_t *e);
 
 
 #endif
