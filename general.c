@@ -1,7 +1,7 @@
 
 #include "num.h"
 
-int round(double a)
+int Round(double a)
 {
   int t = a;
   

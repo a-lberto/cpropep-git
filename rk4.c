@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include "num.h"
 
-int rk4( int (*f)(int neq, double time, double *y, double *dy, void *data), 
-	 int neq, double step, double duration, double *ic, 
-	 double **y, void *data)
+int rk4(int (*f)(int neq, double time, double *y, double *dy, void *data), 
+        int neq, double step, double duration, double *ic, 
+        double *y, void *data)
 {
   int i;
   int n;
@@ -24,45 +24,47 @@ int rk4( int (*f)(int neq, double time, double *y, double *dy, void *data),
 
   for (i = 0; i < neq; i++)
   {
-    y[0][i] = ic[i]; // conditions initiales
-    tmp[i] = y[0][i];
+    y[i + neq*0] = ic[i]; // conditions initiales
+    tmp[i] = y[i + neq*0];
   }
  
-  for (n = 0; n < (int)round(duration/step); n++)
+  for (n = 0; n < Round(duration/step); n++)
   {
 
     for (i = 0; i < neq; i++)
     {
       f(neq, t, tmp, dy, data);
-      K1[i] = step*dy[i];
+      K1[i] = step * dy[i];
       
-      tmp[i] = y[n][i] + K1[i]/2;  // for the next step           
+      tmp[i] = y[i + neq*n] + K1[i]/2;  // for the next step           
+    }
+
+    /* FIXME: verify the coefficient t + step/2 */
+    for (i = 0; i < neq; i++)
+    {
+      f(neq, t + step/2, tmp, dy, data);
+      K2[i] = step * dy[i];
+      
+      tmp[i] = y[i + neq*n] + K2[i]/2;
     }
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, data);
-      K2[i] = step*dy[i];
+      f(neq, t + step/2, tmp, dy, data);
+      K3[i] = step * dy[i];
       
-      tmp[i] = y[n][i] + K2[i]/2;
+      tmp[i] = y[i + neq*n] + K3[i];
     }
     
     for (i = 0; i < neq; i++)
     {
-      f(neq, t, tmp, dy, data);
-      K3[i] = step*dy[i];
-      
-      tmp[i] = y[n][i] + K3[i];
+      f(neq, t + step, tmp, dy, data);
+      K4[i] = step * dy[i];
     }
     
     for (i = 0; i < neq; i++)
-    {
-      f(neq, t, tmp, dy, data);
-      K4[i] = step*dy[i];
-    }
-    
-    for (i = 0; i < neq; i++)
-      y[n+1][i] = y[n][i] + (1.0/6.0)*(K1[i] + 2.0*K2[i] + 2.0*K3[i] + K4[i]);
+      y[i + neq*(n+1)] = y[i + neq*n] +
+        (1.0/6.0)*(K1[i] + 2.0*K2[i] + 2.0*K3[i] + K4[i]);
 
     t = t + step;
   }

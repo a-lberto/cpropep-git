@@ -1,6 +1,6 @@
 
 CC   = gcc
-COPT = -g -Wall #-O3 #-pg -O6\
+COPT = -g -Wall -O3 -pg #-O6\
 # -mpentium -ffast-math -funroll-loops -fnonnull-objects\
 # -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
 # -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer
@@ -13,7 +13,7 @@ DEF = -DLINUX #-DTRUE_ARRAY
 PROG = test
 
 OBJS = test.o
-LIBOBJS = lu.o rk4.o general.o print.o sec.o
+LIBOBJS = lu.o rk4.o rkf.o general.o print.o sec.o newton.o ptfix.o
 LIBNUM = libnum.a
 
 .SUFFIXES: .c

@@ -32,6 +32,11 @@ int function(int neq, double time, double *y, double *dy,
 
 double f(double x);
 
+double f1(double x);
+double df1(double x);
+
+double g1(double x);
+
 int main(void)
 {
 
@@ -59,14 +64,21 @@ int main(void)
 
   print_vec(solution, 3);
   */
+/*
+  printf("Secante\n");
+  printf("Solution: %f\n",  sec(f, -15, 0, 100, 0.0001));
 
-  printf("Solution: %f\n",  sec(f, -15, 0, 0.0001));
-    
-  //printf("epsilon: %.16e\n", epsilon());
+  printf("Newton\n");
+  printf("Solution: %f\n", newton(f1, df1, 1, 100, 0.0001));
   
-  /*
+  printf("Ptfix\n");
+  printf("Solution: %f\n", ptfix(g1, 1, 100, 0.0001));
+
+  //printf("epsilon: %.16e\n", epsilon());
+*/  
   int i;
-  double **ans;
+
+  double *ans;  
   double *ic;
   
   ic = (double *)malloc(sizeof(double) * 4);
@@ -76,25 +88,38 @@ int main(void)
   ic[2] = 0;
   ic[3] = 10;
 
-  if ( ( ans = (double **)malloc(sizeof(double *) * 101)) == NULL)
-       printf("Problem allocating memory\n");
-  for (i = 0; i < 101; i++)
-    ans[i] = (double *)malloc(sizeof(double) * 4);
- 
+  ans = (double *) malloc(sizeof(double) * 4 * 101);
+  
   rk4 (function, 4, 0.1, 10, ic, ans, NULL);
 
   for( i = 0; i < 100; i++)
-    printf("%f  %f %f %f %f\n", i*0.1, ans[i][0], ans[i][1], 
-	   ans[i][2], ans[i][3]);  
-
-  return 0;
+  {
+    printf("%f  %f %f %f %f\n", i*0.1, ans[4*i], ans[1+4*i], 
+	   ans[2 + 4*i], ans[3 + 4*i]);  
+  }
+  
+  //return 0;
 
 
   free(ic);
   free(ans);
-  */
 
   return 0;
+}
+
+double g1(double x)
+{
+  return x + 1 - log(x);
+}
+
+double f1(double x)
+{
+  return log(x) - 1;
+}
+
+double df1(double x)
+{
+  return 1/x;
 }
 
 double f(double x)

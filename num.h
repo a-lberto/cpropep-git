@@ -97,16 +97,22 @@ DATE: February 11
 int rk4( int (*f)(int neq, double time, double *y, double *dy, 
 		  void *data), 
 	 int neq, double step, double duration, double *ic, 
-	 double **y, void *data );
+	 double *y, void *data );
 
 
 /* this function return the nearest integer to a */
 /* it is a replacement of rint which is not ANSI complient */
-int round(double a);
+int Round(double a);
 
 double epsilon(void);
 
-double sec(double (*f)(double x), double x0, double x1, double epsilon);
+double sec(double (*f)(double x), double x0, double x1, int nmax,
+           double epsilon);
+
+double newton(double (*f)(double x), double (*df)(double x), double x0,
+              int nmax, double epsilon);
+
+double ptfix(double (*f)(double x), double x0, double nmax, double epsilon);
 
 #endif
 
