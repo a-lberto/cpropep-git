@@ -3,13 +3,13 @@
 
 CC   = gcc
 COPT = -g -Wall
-LIB  = -lm -lnum
+LIB  =  -lm -lnum 
 LIBDIR = -L../libnum/
 INCLUDEDIR = -I../libnum/
 
 PROG = cpropep
 
-OBJS = equilibrium.o cpropep.o load.o getopt.o
+OBJS = equilibrium.o cpropep.o load.o getopt.o 
 
 .SUFFIXES: .c
 

@@ -42,8 +42,11 @@ int load_thermo(char *filename)
   /* open the file for reading */
   if ((fd = fopen(filename, "r")) == NULL )
     return 1;
-  
-  
+
+  printf("Loading thermo data file...");
+  fflush(stdout);
+
+
   while ((fgets(buf_ptr, 88, fd)) != NULL)
   {
     /* if the line is not commented */
@@ -220,11 +223,9 @@ int load_thermo(char *filename)
       i++;
     }
   }
-  
   fclose(fd);
-
+  printf("%d species loaded.\n", i);
   return i;
-
 }
 
 
@@ -244,6 +245,9 @@ int load_propellant(char *filename)
   /* open the file for reading */
   if ((fd = fopen(filename, "r")) == NULL )
     return 1;
+
+  printf("Loading propellant data file...");
+  fflush(stdout);
   
   while ((fgets(buf_ptr, 88, fd)) != NULL)
   {
@@ -290,14 +294,13 @@ int load_propellant(char *filename)
     }
   }  
   fclose(fd);     
+  printf("%d species loaded.\n", i);
   return i;
 }
 
 
-
 void trim_spaces(char *str, unsigned int len)
 {
-  /* Removes trailing ' ' characters.  If the entire string is ' ' characters, leaves one. */
   unsigned int i;
   
   for (i = len - 1; i > 0; i--)
@@ -308,6 +311,5 @@ void trim_spaces(char *str, unsigned int len)
       return;
     }
   }
-  
   *(str + 1) = '\0';
 }

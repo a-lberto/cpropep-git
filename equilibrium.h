@@ -239,6 +239,7 @@ int print_gazeous(product_t p);
 
 
 int print_product_composition(equilibrium_t *e);
+int print_propellant_composition(equilibrium_t *e);
 
 int set_verbose(equilibrium_t *e, int v);
 
@@ -502,7 +503,7 @@ COMMENTS: It use the theory explain in
 
 AUTHOR:   Antoine Lefebvre
 ****************************************************************/
-int fill_matrix(double **matrix, equilibrium_t *e);
+int fill_matrix(double **matrix, equilibrium_t *e, problem_t P);
 
 
 /****************************************************************
@@ -513,7 +514,7 @@ FUNCTION: This function compute the equilibrium composition at
 
 AUTHOR:   Antoine Lefebvre
 ******************************************************************/
-int equilibrium(equilibrium_t *equil);
+int equilibrium(equilibrium_t *equil, problem_t P);
 
 
 double product_molar_mass(equilibrium_t *e);

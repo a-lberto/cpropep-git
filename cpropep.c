@@ -68,22 +68,109 @@ void usage(void)
 }
 
 
+int load_input(FILE *fd, equilibrium_t *e)
+{ 
+  int tmp1, tmp2;
+
+  int sp, m;
+
+  int section = 0;
+
+  char buffer[128];
+  char tmp[10];
+  char num[10];
+  char qt[10];
+  char *bufptr;
+
+  char unit;
+
+  while ( fgets(buffer, 128, fd) != NULL )
+  {
+    switch (section)
+    {
+    case 0:
+      
+      if (buffer[0] == ' ' || buffer[0] == '\n' || buffer[0] == '\0')
+      {
+	section = 0;
+	break;
+      }
+      else if ( strncmp(buffer, "Propellant", 10) == 0 )
+	section = 1;
+      else if ( strncmp(buffer, "TP", 2) == 0 )
+	{
+	  //printf("%s\n", buffer);
+	  sscanf(buffer, "%s %d %d", tmp, &tmp1, &tmp2);
+	  //printf("%d deg K, %d atm\n", tmp1, tmp2);
+	  set_state(e, tmp1, tmp2);
+	}
+      break;
+
+    case 1:   /* propellant section */
+      if (buffer[0] == '+')
+      {
+	sscanf(buffer, "%s %s", num, qt);
+	bufptr = num + 1;
+	sp = atoi(bufptr);
+	unit = *(qt + strlen(qt) - 1);
+	
+	*(qt + strlen(qt) - 1) = '\n';
+	
+	m = atoi(qt);
+
+	if ( unit == 'g') 
+	  add_in_propellant(e, sp, GRAM_TO_MOL(m, sp) );
+	else if (unit == 'm')
+	  add_in_propellant(e, sp, m);
+	else
+	{
+	  printf("Unit must be g (gram) or m (mol)\n");
+	  break;
+	}
+	break;
+      }
+      else if (buffer[0] == '#')
+      {
+	//printf("Comments\n");
+	break;
+      }
+      else if (buffer[0] == ' ' || buffer[0] == '\n' || buffer[0] == '\0')
+	section = 0;
+      break;
+
+    default:
+      section = 0;
+      break;
+      
+    }
+    
+  }
+  return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
-  
-  //int i;
   int c;
-  
+  int v = 0;
   char filename[128];
-
+  FILE *fd = NULL;
   equilibrium_t *equil;
+
+  int thermo_loaded = 0;
+  int propellant_loaded = 0;
+
+  /* allocate memory to hold data */
+  if (mem_alloc())
+    return 1;
+
 
   while (1)
   {
-    c = getopt(argc, argv, "ahf:");
+    c = getopt(argc, argv, "aphtf:v:");
 
     if (c == EOF)
-      return 0;
+      break;
 
     switch (c)
     {
@@ -91,71 +178,85 @@ int main(int argc, char *argv[])
       printf("Got an a\n");
       break;
 
+    case 'p':
+      if (!propellant_loaded)
+      {
+	load_propellant ("propellant.dat");
+	propellant_loaded = 1;
+      }
+      print_propellant_list();
+      return 0;
+
     case 'h':
       usage();
-      break;
+      return 0;
 
     case 'f':
-      printf("%s\n", optarg);
       if (strlen(optarg) > 128)
       {
 	printf("Filename too long!\n");
 	break;
       }
       strncpy(filename, optarg, 128);
+      if ((fd = fopen(filename, "r")) == NULL )
+	return 1;
+      break;
+
+    case 't':
+      if (!thermo_loaded)
+      {
+	load_thermo ("thermo.dat");
+	thermo_loaded = 1;
+      }
+      print_thermo_list();
+      return 0;
+
+    case 'v':
+      v = atoi(optarg);
+      if (v < 0 || v > 10)
+      {
+	printf("Verbose is an integer betwenn 0 and 10.\n");
+	v = 0;
+      }
       break;
 
     case '?':
       info(argv);
-      break;
+      return 0;
     }
   }  
 
 
-  equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
-  initialize_equilibrium(equil);
-
-  /* set the state for equil, temperature, pressure */
-  set_state(equil, 650, 6);
-
-  /* allocate memory to hold data */
-  if (mem_alloc())
-    return 1;
-   
-
-  initialize_product(equil->p);
-
-  load_thermo ("thermo.dat");
-  load_propellant ("propellant.dat");
-
+  if (!thermo_loaded)
+  {
+    load_thermo ("thermo.dat");
+    thermo_loaded = 1;
+  }
+  if (!propellant_loaded)
+  {
+    load_propellant ("propellant.dat");
+    propellant_loaded = 1;
+  }
 
   welcome_message();
 
-  //add_in_propellant(equil, 685, GRAM_TO_MOL(79.36, 685) ); // O2
-  //add_in_propellant(equil, 458, GRAM_TO_MOL(10, 458) ); // H2
-
-  //add_in_propellant(equil, 963, 1); // UDMH
-  //add_in_propellant(equil, 436, 1); // HYDRAZINE N2H4
-  //add_in_propellant(equil, 378, 2); // F2
-
-  add_in_propellant(equil, 766, GRAM_TO_MOL(70, 766) ); // KClO4
-  //add_in_propellant(equil, 788, 2); // HTPB
-
-  //add_in_propellant(equil, 765, 0.742); // KNO3
-  add_in_propellant(equil, 840, GRAM_TO_MOL(30, 840)); // table sugar H22C12O11
-  //add_in_propellant(equil, 210, 1.25); // C
-
-  set_verbose(equil, 1);
-  
-  equilibrium(equil);
-
-
-  //print_thermo_list();
-  //print_propellant_list();
+  if (fd != NULL)
+  {
+    equil = (equilibrium_t *) malloc ( sizeof (equilibrium_t) );
+    initialize_equilibrium(equil);
     
+    load_input(fd, equil);
+    fclose(fd);
 
+    //print_propellant_composition(equil);
 
-  dealloc_equillibrium (equil);
+    set_verbose(equil, v);
+
+    equilibrium(equil, HP);
+
+    dealloc_equillibrium (equil);
+  }
+
  
   free (propellant_list);
   free (thermo_list);
