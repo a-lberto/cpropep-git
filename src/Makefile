@@ -1,13 +1,14 @@
 
 CC   = gcc
-COPT = -g -Wall -O3 -pg #-O6\
-# -mpentium -ffast-math -funroll-loops -fnonnull-objects\
-# -fno-exceptions -fforce-mem -fforce-addr -fcse-follow-jumps\
-# -fexpensive-optimizations -march=pentium -fno-rtti #-fomit-frame-pointer
+COPT = -g -Wall -O3 # -pg
 
-INCLUDEDIR = -I../../libcpropep/include -I../../libcompat/include -I../../libnum/ -I../include/
+ROOT = ../..
+INCLUDEDIR = -I$(ROOT)/libcpropep/include \
+             -I$(ROOT)/libcompat/include \
+             -I$(ROOT)/libnum/include \
+             -I../include/
 
-DEF = -DGCC #-DTRUE_ARRAY
+DEF = -DGCC 
 
 LIBNAME  = libthermo.a
 
@@ -23,9 +24,10 @@ all: $(LIBNAME)
 $(LIBNAME): $(LIBOBJS)
 	ar -r $@ $(LIBOBJS)
 	ranlib $@
+	mv $(LIBNAME) ../lib/
 	
 clean:
 	rm -f *.o *~
 
 deep-clean: clean
-	rm -f $(LIBNAME)
+	rm -f ../lib/$(LIBNAME)
