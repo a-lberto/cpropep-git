@@ -1,6 +1,6 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
 /* Copyright (C) 2000                                                  */
-/* Antoine Lefebvre <antoine.lefebvre@polymtl.ca                       */
+/* Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                      */
 /* Mark Pinese <ida.pinese@bushnet.qld.edu.au>                         */
 
 /* This program is free software; you can redistribute it and/or modify*/
@@ -25,6 +25,9 @@
 /* #include <time.h> */
 
 #include "cpropep.h"
+
+#include "libnum.h"
+
 
 /* global variable containing the information about chemical species */
 propellant_t	*propellant_list;
@@ -549,10 +552,12 @@ int list_element(composition_t comp, int *list)
   return e;
 }
 
-int list_product(int n_element, int *element_list, int *product_list)
+int list_product(int n_element, int *element_list, product_t *p)
 {
   int i, j, k;
-  int e = 0;
+
+  int e = 0;   // global counter (number of species found)
+  int st;      // temporary variable to hold the state of one specie
   int ok = 1;
   
   for (j = 0; j < MAX_THERMO; j++)
@@ -574,16 +579,37 @@ int list_product(int n_element, int *element_list, int *product_list)
     }
     if (ok) /* add to the list */
     {
-      /* printf("%s\n", thermo_list[j].name); */
-      product_list[e] = j;
+      st = thermo_list[j].state;
+      p->species[st][ p->n[st] ] = j;
+      p->n[st]++;
       e++;
     }
     ok = 1;
   }
+
+  // reallocate the momory to the minimum size
+  for (i = 0; i < STATE_LAST; i++)
+  {
+    if (( p->species[i] = (int *) realloc( p->species[i], 
+					   sizeof(int) * p->n[i])) == NULL)
+      printf("Reallocation of memory failed\n");
+    
+    if (( p->coef[i] = (double *) realloc ( p->coef[i], 
+					   sizeof(double) * p->n[i])) == NULL)
+      printf("Reallocation of memory failed\n");
+  }
+
+  // initialize the coef to the first approximation
+  for (j = 0; j < STATE_LAST; j++)
+  {
+    for (i = 0; i < p->n[j]; i++)
+      p->coef[j][i] = 0.1/p->n[j];
+  }
+  
   return e;
 }
 
-int mem_alloc(void);
+int mem_alloc(void)
 {
   if ((thermo_list = 
        (thermo_t *) malloc(sizeof(thermo_t) * MAX_THERMO)) == NULL)
@@ -605,67 +631,155 @@ int mem_alloc(void);
   return 0;
 }
 
+int initialize_product(product_t *p)
+{
+  int i, j;
+
+  for (i = 0; i < STATE_LAST; i++)
+    p->n[i] = 0;
+
+  // allocate the memory
+  for (i = 0; i < STATE_LAST; i++)
+    p->species[i] = (int *) malloc (sizeof(int) * 300);
+
+  for (i = 0; i < STATE_LAST; i++)
+    p->coef[i] = (double *) malloc (sizeof(double) * 300);
+
+  p->isalloc = 1;
+
+  // initialize the list to -1
+  for (i = 0; i < 300; i++)
+  {
+    for (j = 0; j < STATE_LAST; j++)
+      p->species[j][i] = -1;
+  }
+
+  return 0;
+}
+
+int dealloc_product(product_t *p)
+{
+  int i;
+  for (i = 0; i < STATE_LAST; i++)
+  {
+    free (p->species[i]);
+    free (p->coef[i]);
+  }
+  return 0;
+}
+
+int element_coef(int element, int molecule)
+{
+  int i;
+  for (i = 0; i < 5; i++)
+  {
+    if (thermo_list[molecule].elem[i] == element)
+      return thermo_list[molecule].coef[i];
+  }
+  return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
   /* clock_t start, finish; */
   
-  int i, ele, pro;
-  
-  int *element;
-  int *product;
-  composition_t propellant;
-  
-  double temp;
-  int co2;
+  int i, j, k, n_elements, n_product;
+
+  double tmp;
+
+  int *element;   // will contain a list of all elements in composition
+
+  product_t product;        // structure to hold product information
+  composition_t propellant; // structure to hold propellant information
+
+  double **matrix; // matrix to hold coefficient for the system resolution
+  int size;
+
+
+  //double temp;
+  //int co2;
   
   /* allocate memory to hold data */
   if (mem_alloc())
     return 1;
   
-  
+  // initialisation of the element list
   element = (int *)calloc(100, sizeof(int));
   for (i = 0; i < 100; i++)
     element[i] = -1;
-  
-  product = (int *)calloc(500, sizeof(int));
-  for (i = 0; i < 100; i++)
-    product[i] = -1;
-  
+
+  initialize_product(&product);
+
+ 
       
   load_thermo("thermo.dat");
   load_propellant("propellant.dat");
   
 
 
-  propellant.ncomp = 3;
+  propellant.ncomp = 2;
   
-  propellant.molecule[0] = 34;  // AL
-  propellant.molecule[1] = 766; // KCLO4
-  propellant.molecule[2] = 788; // HTPB
+  //propellant.molecule[0] = 34;  // AL
   
-  propellant.coef[0] = GRAM_TO_MOL(10, propellant.molecule[0]);
-  propellant.coef[1] = GRAM_TO_MOL(70, propellant.molecule[1]);
-  propellant.coef[2] = GRAM_TO_MOL(20, propellant.molecule[2]);
+  propellant.molecule[0] = 685; // O2
+  propellant.molecule[1] = 458; // H2
+
+  //propellant.molecule[0] = 766; // KCLO4
+  //propellant.molecule[1] = 788; // HTPB
+  
+  //propellant.coef[0] = GRAM_TO_MOL(10, propellant.molecule[0]);
+  propellant.coef[0] = GRAM_TO_MOL(70, propellant.molecule[0]);
+  propellant.coef[1] = GRAM_TO_MOL(30, propellant.molecule[1]);
   
   
-  ele = list_element(propellant, element);
-  printf("%d\n", ele);
+  n_elements = list_element(propellant, element); // ele contain the number of element
+  printf("%d\n", n_elements);
   
-  for (i = 0; i < ele; i++)
+  for (i = 0; i < n_elements; i++)
     printf("%s ", symb[element[i]] );
   
   printf("\n");
   
-  pro = list_product(ele, element, product);
-  printf("%d\n", pro);
+  n_product = list_product(n_elements, element, &product);  // pro contain the total number
+  // of product
+  printf("%d\n", n_product);
+  printf("%d\n", product.n[GAS]);
+  printf("%d\n", product.n[CONDENSED]);
   
+  size = n_elements + product.n[CONDENSED] + 2;
+
+  // allocate the memory for the matrix
+  matrix = (double **) malloc (sizeof(double *) * size);
+  for (i = 0; i < size; i++)
+    matrix[i] = (double *) malloc (sizeof(double) * (size+1));
+
+  for (i = 0; i < n_elements; i++) // each column
+  {
+    for (j = 0; j < n_elements; j++) // each row
+    {
+      tmp = 0.0;
+      for (k = 0; k < product.n[GAS]; k++)
+  	tmp += element_coef( element[j], product.species[GAS][k]) * 
+	  element_coef( element[i], product.species[GAS][k] ) * 
+	  product.coef[GAS][k];
+      
+      matrix[j][i] = tmp;
+
+    }
+  }
+
+  print_square_matrix(matrix, n_elements);
+ 
+
+
+
   
-  /*
-    co2 = thermo_search("CO2");
+  //co2 = thermo_search("CO2");
     
-    print_thermo_list();
-    print_propellant_list();
-    
+  //print_thermo_list();
+  //  print_propellant_list();
+    /*
     print_thermo_info( co2 );
     
     temp = enthalpy(co2, 1700);
@@ -680,8 +794,13 @@ int main(int argc, char *argv[])
     printf("\n\nAverage time elapsed: %f\n", ((double)(finish - start)) 
     / (CLOCKS_PER_SEC * 20));
   */
+
+  
   free(element);
-  free(product);
+  dealloc_product (&product);
+  free (propellant_list);
+  free (thermo_list);
+
   return 0;
   
 }

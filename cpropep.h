@@ -91,7 +91,8 @@ TYPE:  Enumeration of the possible state of a substance
 typedef enum 
 {
   GAS,
-  CONDENSED
+  CONDENSED,
+  STATE_LAST
 } state_t;
 
 
@@ -159,6 +160,24 @@ typedef struct _composition
   int molecule[MAX_COMP];
   float coef[MAX_COMP];
 } composition_t;
+
+
+/*****************************************************************
+TYPE: Hold the composition of the combustion product. The molecule
+      are separate between their different possible state.
+
+NOTE: This structure should be initialize with the function 
+      initialize_product.
+
+DATE: February 13, 2000
+******************************************************************/
+typedef struct _product
+{
+  int    isalloc;              // true if the memory was allocated
+  int    n[STATE_LAST];        // number of species for each state
+  int    *species[STATE_LAST]; // list of species for each state
+  double *coef[STATE_LAST];    // stoechiometric coefficient of each molecule
+} product_t;
 
 
 
@@ -279,7 +298,7 @@ DATE: February 6, 2000
 
 AUTHOR: Antoine Lefebvre
 **************************************************************/
-int list_product(int n_element, int *element_list, int *product_list);
+int list_product(int n_element, int *element_list, product_t *p);
 
 
 /*************************************************************
@@ -376,6 +395,27 @@ len - length of str.
 AUTHOR: Mark Pinese
 ****************************************************************/
 void trim_spaces(char *str, unsigned int len);
+
+
+/**************************************************************
+FUNCTION: This function initialize the the product structure.
+          It allocate memory for the pointer and initialize
+	  some value to -1
+
+PARAMETER: A pointer to a structure product_t
+
+AUTHOR: Antoine Lefebvre
+
+DATE: February 13, 2000
+****************************************************************/
+int initialize_product(product_t *p);
+
+
+/***************************************************************
+FUNCTION: This function free all the pointer allocated in the
+          product_t structure bye the initialisaztion
+***************************************************************/
+int dealloc_product(product_t *p);
 
 #endif
 

@@ -3,8 +3,9 @@
 
 CC   = gcc
 COPT = -g -Wall
-LIB  = -lm
-
+LIB  = -lm -lnum
+LIBDIR = -L../libnum/
+INCLUDEDIR = -I../libnum/
 
 PROG = cpropep
 
@@ -13,10 +14,10 @@ OBJS = cpropep.o
 .SUFFIXES: .c
 
 .c.o:
-	$(CC) $(COPT) -c $*.c -o $*.o
+	$(CC) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.o
 
 $(PROG): $(OBJS)
-	$(CC) $(COPT) $(OBJS) $(LIB) -o $@
+	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
 
 
 clean:
