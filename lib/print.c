@@ -1,5 +1,5 @@
 /* print.c  -  Output functions           */
-/* $Id: print.c,v 1.10 2000/07/12 04:01:44 antoine Exp $ */
+/* $Id: print.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
@@ -250,9 +250,9 @@ int print_propellant_composition(equilibrium_t *e)
   for (i = 0; i < e->propellant.ncomp; i++)
   {
     fprintf(outputfile, "%-4d  %-35s %.4f %.4f ", e->propellant.molecule[i],
-            (propellant_list + e->propellant.molecule[i])->name,
-            e->propellant.coef[i], 
-            e->propellant.coef[i]*propellant_molar_mass(e->propellant.molecule[i]));
+            PROPELLANT_NAME(e->propellant.molecule[i]), e->propellant.coef[i], 
+            e->propellant.coef[i] *
+            propellant_molar_mass(e->propellant.molecule[i]));
     
     fprintf(outputfile, "  ");
     /* print the composition */
@@ -288,7 +288,8 @@ int print_propellant_composition(equilibrium_t *e)
     fprintf(outputfile, "%d possible gazeous species\n", e->product.n[GAS]);
     if (global_verbose > 1)
       print_gazeous(e->product);
-    fprintf(outputfile, "%d possible condensed species\n\n", e->product.n_condensed);
+    fprintf(outputfile, "%d possible condensed species\n\n",
+            e->product.n_condensed);
     if (global_verbose > 1)
       print_condensed(e->product);
   }
@@ -296,7 +297,7 @@ int print_propellant_composition(equilibrium_t *e)
   return 0;
 }
 
-int print_performance_information(equilibrium_t *e, short npt)
+int print_performance_information (equilibrium_t *e, short npt)
 {
   short i;
   
@@ -305,7 +306,7 @@ int print_performance_information(equilibrium_t *e, short npt)
     fprintf(outputfile, " % 11.5f", (e+i)->performance.ae_at);
   fprintf(outputfile, "\n");
   
-  fprintf(outputfile, "A/dotm           :            ");
+  fprintf(outputfile, "A/dotm (m/s/atm) :            ");
   for (i = 1; i < npt; i++)
     fprintf(outputfile, " % 11.5f", (e+i)->performance.a_dotm);
   fprintf(outputfile, "\n");
@@ -377,11 +378,11 @@ int print_product_properties(equilibrium_t *e, short npt)
     fprintf(outputfile, " % 11.3f", (e+i)->properties.M);
   fprintf(outputfile, "\n");
   
-  fprintf(outputfile, "(dLV/dLP)t       :");
+  fprintf(outputfile, "(dLnV/dLnP)t     :");
   for (i = 0; i < npt; i++)
     fprintf(outputfile, " % 11.5f", (e+i)->properties.dV_P);
   fprintf(outputfile, "\n");
-  fprintf(outputfile, "(dLV/dLT)p       :");
+  fprintf(outputfile, "(dLnV/dLnT)p     :");
   for (i = 0; i < npt; i++)
     fprintf(outputfile, " % 11.5f", (e+i)->properties.dV_T);
   fprintf(outputfile, "\n");

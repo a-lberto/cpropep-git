@@ -1,6 +1,6 @@
 /* derivative.c  -  Fill the mattrix to compute thermochemical derivative
                     relative to logarithm of pressure and temperature */
-/* $Id: derivative.c,v 1.10 2000/07/12 04:01:44 antoine Exp $ */
+/* $Id: derivative.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */

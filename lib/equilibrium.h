@@ -1,7 +1,7 @@
 #ifndef equilibrium_h
 #define equilibrium_h
 /* equilibrium.h  -  Calculation of Complex Chemical Equilibrium       */
-/* $Id: equilibrium.h,v 1.15 2000/06/20 02:15:12 antoine Exp $ */
+/* $Id: equilibrium.h,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */

@@ -1,6 +1,6 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.3 2000/07/12 04:01:44 antoine Exp $ */
+/* $Id: thermo.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */

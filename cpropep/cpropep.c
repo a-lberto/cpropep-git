@@ -1,5 +1,5 @@
 /* cpropep.c  -  Calculation of Complex Chemical Equilibrium           */
-/* $Id: cpropep.c,v 1.23 2000/07/12 04:01:44 antoine Exp $ */
+/* $Id: cpropep.c,v 1.1 2000/07/14 00:30:53 antoine Exp $ */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */

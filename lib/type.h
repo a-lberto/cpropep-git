@@ -45,12 +45,12 @@ Note: Specific impulse have unit of m/s
 **********************************************/
 typedef struct _performance_prop
 {
-  double ae_at;   /* Exit aera / Throat aera    */   
-  double a_dotm;  /* Exit aera / mass flow rate */
-  double cstar;   /* Characteristic velocity    */
-  double cf;      /* Coefficient of thrust      */
-  double Ivac;    /* Specific impulse (vacuum)  */
-  double Isp;     /* Specific impulse           */
+  double ae_at;   /* Exit aera / Throat aera              */   
+  double a_dotm;  /* Exit aera / mass flow rate (m/s/atm) */
+  double cstar;   /* Characteristic velocity              */
+  double cf;      /* Coefficient of thrust                */
+  double Ivac;    /* Specific impulse (vacuum)            */
+  double Isp;     /* Specific impulse                     */
   
 } performance_prop_t;
 

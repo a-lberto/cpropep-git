@@ -1,8 +1,8 @@
 CC   = gcc
 COPT = -g -Wall
-LIB  =  -lcpropep -lm -lnum -lcgi #-lcruft -lf2c
-LIBDIR = -L../../libnum/ -L../ -L./
-INCLUDEDIR = -I../../libnum/ -I../ -I./
+LIB  =  -lcpropep -lthermo -lm -lnum -lcgi #-lcruft -lf2c
+LIBDIR = -L../../libnum/ -L../lib/ -L./
+INCLUDEDIR = -I../../libnum/ -I../lib/ -I./
 
 DEF = -DGCC -DSOURCEFORGE 
 
@@ -20,7 +20,6 @@ all: $(PROG)
 
 
 $(PROG): $(OBJS)
-	make -C ../ all
 	$(CC) $(COPT) $(OBJS) $(LIBDIR) $(LIB) -o $@
 
 
