@@ -47,21 +47,21 @@ VARIABLE: Contain the molar mass of element by atomic number
           molar_mass[0] contain hydrogen and so on.
 *****************************************************************/
 const float molar_mass[100] = { 
-     1.00794, 4.00260, 6.941, 9.01218, 10.811, 12.011,
-     14.0067, 15.9994, 18.99840, 20.11797, 22.99977, 24.305, 
-     26.98154, 28.0855, 30.97376, 32.066, 35.4527, 39.948, 
-     39.0983, 40.078, 44.9559, 47.88, 50.9415, 51.996, 54.938, 
-     55.847, 58.9332, 58.6934, 63.546, 65.39, 69.723, 72.61, 
-     74.9216,
-// we should correct the value
-     78.96,79.916, 83.80, 85.48, 87.63, 88.91, 91.22, 92.91, 95.95,
-     99.,101.1, 102.91, 106.4, 107.88, 112.41, 114.82, 118.7, 121.76,
-     127.61, 126.91, 131.3, 132.91, 137.36, 138.92, 140.13, 140.91,
-     144.27,147., 150.35, 152., 157.26, 158.93, 162.51,164.94,167.27,
-     168.94,173.04, 174.99, 178.50, 180.95, 183.86, 186.22, 190.2,
-     192.2,195.09, 197., 220.61, 204.39, 207.21, 208.99, 210., 210.,
-     222.,2.014,226.,92.906,232.,231.,238.,237.,237.,12.011,9.013,
-     10.82,24.32,26.98, 253.0 };
+  1.00794, 4.00260, 6.941, 9.01218, 10.811, 12.011,
+  14.0067, 15.9994, 18.99840, 20.11797, 22.99977, 24.305, 
+  26.98154, 28.0855, 30.97376, 32.066, 35.4527, 39.948, 
+  39.0983, 40.078, 44.9559, 47.88, 50.9415, 51.996, 54.938, 
+  55.847, 58.9332, 58.6934, 63.546, 65.39, 69.723, 72.61, 
+  74.9216,
+  // we should correct the value
+  78.96,79.916, 83.80, 85.48, 87.63, 88.91, 91.22, 92.91, 95.95,
+  99.,101.1, 102.91, 106.4, 107.88, 112.41, 114.82, 118.7, 121.76,
+  127.61, 126.91, 131.3, 132.91, 137.36, 138.92, 140.13, 140.91,
+  144.27,147., 150.35, 152., 157.26, 158.93, 162.51,164.94,167.27,
+  168.94,173.04, 174.99, 178.50, 180.95, 183.86, 186.22, 190.2,
+  192.2,195.09, 197., 220.61, 204.39, 207.21, 208.99, 210., 210.,
+  222.,2.014,226.,92.906,232.,231.,238.,237.,237.,12.011,9.013,
+  10.82,24.32,26.98, 253.0 };
 
 
 /****************************************************************
@@ -72,16 +72,16 @@ COMMENTS: It is use in the loading of the data file to recognize
           the chemical formula.
 *****************************************************************/
 const char symb[N_SYMB][3] = {
-     "H ","HE","LI","BE","B ","C ","N ","O ",
-     "F ","NE","NA","MG","AL","SI","P ","S ","CL","AR","K ","CA",
-     "SC","TI","V ","CR","MN","FE","CO","NI","CU","ZN","GA","GE",
-     "AS","SE","BR","KR","RB","SR","Y ","ZR","NB","MO","TC","RU",
-     "RH","PD","AG","CD","IN","SN","SB","TE","I ","XE","CS","BA",
-     "LA","CE","PR","ND","PM","SM","EU","GD","TB","DY","HO","ER",
-     "TM","YB","LU","HF","TA","W ","RE","OS","IR","PT","AU","HG","TL",
-     "PB","BI","PO","AT","RN","FR","RA","AC","TH","PA","U ","NP",
-     "U6","U5","U1","U2","U3","U4","FM",
-     "E ", "D " }; /* the E stand for electron and D for deuterium*/
+  "H ","HE","LI","BE","B ","C ","N ","O ",
+  "F ","NE","NA","MG","AL","SI","P ","S ","CL","AR","K ","CA",
+  "SC","TI","V ","CR","MN","FE","CO","NI","CU","ZN","GA","GE",
+  "AS","SE","BR","KR","RB","SR","Y ","ZR","NB","MO","TC","RU",
+  "RH","PD","AG","CD","IN","SN","SB","TE","I ","XE","CS","BA",
+  "LA","CE","PR","ND","PM","SM","EU","GD","TB","DY","HO","ER",
+  "TM","YB","LU","HF","TA","W ","RE","OS","IR","PT","AU","HG","TL",
+  "PB","BI","PO","AT","RN","FR","RA","AC","TH","PA","U ","NP",
+  "U6","U5","U1","U2","U3","U4","FM",
+  "E ", "D " }; /* the E stand for electron and D for deuterium*/
 
 
 
@@ -90,8 +90,8 @@ TYPE:  Enumeration of the possible state of a substance
 *****************************************************************/
 typedef enum 
 {
-     GAS,
-     CONDENSED
+  GAS,
+  CONDENSED
 } state_t;
 
 
@@ -101,27 +101,27 @@ TYPE: Structure to hold information of species contain in the
 ****************************************************************/
 typedef struct _thermo
 {
-     char    name[19];
-     char    comments[57];
-     int     nint;         /* number of different temperature interval */
-     char    id[7];        /* identification code */
-     int     elem[5]; 
-     int     coef[5];
-     state_t state;
-     double  weight;       /* molecular weight */
-     float   heat;         /* heat of formation at 298.15 K  (J/mol)  */
-     double  dho;          /* HO(298.15) - HO(0) */
-     float   range[4][2];  /* temperature range */
-     int     ncoef[4];     /* number of coefficient for Cp0/R   */
-     int     ex[4][8];     /* exponent in empirical equation */
-     
-     long double param[4][9];
-
-     /* for species with data at only one temperature */
-     /* especially condensed                          */
-     float temp;
-     float enth;
-
+  char    name[19];
+  char    comments[57];
+  int     nint;         /* number of different temperature interval */
+  char    id[7];        /* identification code */
+  int     elem[5]; 
+  int     coef[5];
+  state_t state;
+  double  weight;       /* molecular weight */
+  float   heat;         /* heat of formation at 298.15 K  (J/mol)  */
+  double  dho;          /* HO(298.15) - HO(0) */
+  float   range[4][2];  /* temperature range */
+  int     ncoef[4];     /* number of coefficient for Cp0/R   */
+  int     ex[4][8];     /* exponent in empirical equation */
+  
+  long double param[4][9];
+  
+  /* for species with data at only one temperature */
+  /* especially condensed                          */
+  float temp;
+  float enth;
+  
 } thermo_t;
 
 /***************************************************************
@@ -130,13 +130,13 @@ TYPE: Structure to hold information of species contain in the
 ****************************************************************/
 typedef struct _propellant
 {
-     char  name[30];  /* name of the propellant */
-     int   elem[6];   /* element in the molecule (atomic number) max 6 */
-     int   coef[6];   /* stochiometric coefficient of this element 
-			 (0 for none) */
-     int   heat; /* heat of formation in cal/gram */
-     float density; /* density in pound/cubic inch */
-
+  char  name[30];  /* name of the propellant */
+  int   elem[6];   /* element in the molecule (atomic number) max 6 */
+  int   coef[6];   /* stochiometric coefficient of this element 
+		      (0 for none) */
+  int   heat; /* heat of formation in cal/gram */
+  float density; /* density in pound/cubic inch */
+  
 } propellant_t;
 
 
@@ -155,9 +155,9 @@ DATE: February 6, 2000
 ****************************************************************/
 typedef struct _composition
 {
-     int ncomp;
-     int molecule[MAX_COMP];
-     float coef[MAX_COMP];
+  int ncomp;
+  int molecule[MAX_COMP];
+  float coef[MAX_COMP];
 } composition_t;
 
 
