@@ -9,7 +9,7 @@ PARAMETER: filename should be the path of the file containing
            in the format of the file propellant.dat include
 	   in the distribution.
 
-COMMENTS: It load the information in the global variable
+COMMENTS: It loads the information in the global variable
           propellant_list[MAX_PROPELLANT] that is of type 
 	  propellant_t
 
@@ -45,12 +45,4 @@ AUTHOR: Mark Pinese
 ****************************************************************/
 void trim_spaces(char *str, unsigned int len);
 
-
 #endif
-
-
-
-
-
-
-

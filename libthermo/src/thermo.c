@@ -1,12 +1,12 @@
 /* thermo.c  -  Compute thermodynamic properties of individual
                 species and composition of species           */
-/* $Id: thermo.c,v 1.2 2001/02/22 19:48:44 antoine Exp $ */
+
+/*  1.2 2001/02/22 19:48:44 */
 /* Copyright (C) 2000                                                  */
 /*    Antoine Lefebvre <antoine.lefebvre@polymtl.ca>                   */
 /*    Mark Pinese <pinese@cyberwizards.com.au>                         */
 /*                                                                     */
 /* Licensed under the GPLv2                                            */
-
 
 #include <math.h>
 #include <string.h>
@@ -23,13 +23,13 @@ These variables hold the number of records for propellant and thermo data
 ***************************************************************/
 unsigned long num_propellant, num_thermo;
 
-/* global variable containing the information about chemical species */
+/* global variables containing the information about chemical species */
 propellant_t	*propellant_list;
 thermo_t	    *thermo_list;
 
 
 /****************************************************************
-VARIABLE: Contain the molar mass of element by atomic number
+VARIABLE: Contains the molar mass of element by atomic number
           molar_mass[0] contain hydrogen and so on.
           Data come from Sargent-Welch 1996
 *****************************************************************/
@@ -54,10 +54,10 @@ const float molar_mass[N_SYMB] = {
 
 
 /****************************************************************
-VARIABLE: Contain the symbol of the element in the same way as
+VARIABLE: Contains the symbols of the element in the same way as
           for the molar mass.
 
-COMMENTS: It is use in the loading of the data file to recognize
+COMMENTS: It is used in the loading of the data file to recognize
           the chemical formula.
 *****************************************************************/
 const char symb[N_SYMB][3] = {
@@ -84,8 +84,8 @@ double enthalpy_0(int sp, float T)
   if (T < s->range[0][0]) /* Temperature below the lower range */
   {
     pos = 0;
-  }       /*Temperature above the higher range */
-  else if (T >= s->range[s->nint-1][1]) 
+  }      
+  else if (T >= s->range[s->nint-1][1])  /*Temperature above the higher range */
   {
     pos = s->nint - 1;
   }
