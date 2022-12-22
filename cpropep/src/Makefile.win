@@ -22,15 +22,15 @@ OBJS = cpropep.obj getopt.obj
 all: $(PROG)
 
 .c.obj:
-        $(CC) $(COPT) $(IDIR) $(DEF) -c $*.c -o $*.obj
+	$(CC) $(COPT) $(IDIR) $(DEF) -c $*.c -o $*.obj
 
 $(PROG): $(OBJS)
-        $(CC) $(LDOPT) $(LIBDIR) $(LIB) $(OBJS)
+	$(CC) $(LDOPT) $(LIBDIR) $(LIB) $(OBJS)
 
 clean:
-        del *.obj
-        del *.bak
+	del *.obj
+	del *.bak
 	del *.tds
 	
 deep-clean: clean
-        del $(PROG)
+	del $(PROG)
