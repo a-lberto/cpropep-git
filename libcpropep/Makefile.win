@@ -28,23 +28,23 @@ TLIBCPROPEP     = +equilibrium.obj +print.obj +performance.obj +derivative.obj
 all: $(CPROPEP_LIBNAME) $(THERMO_LIBNAME) $(COMPAT_LIBNAME)
 
 .c.obj:
-        $(CC) $(DEF) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.obj
+	$(CC) $(DEF) $(INCLUDEDIR) $(COPT) -c $*.c -o $*.obj
 
 $(COMPAT_LIBNAME): $(COMPAT_LIBOBJS)
-        tlib $@ $(TLIBCOMPAT)
+	tlib $@ $(TLIBCOMPAT)
 
 $(CPROPEP_LIBNAME): $(CPROPEP_LIBOBJS)
-        tlib $@ $(TLIBCPROPEP)
+	tlib $@ $(TLIBCPROPEP)
 
 $(THERMO_LIBNAME): $(THERMO_LIBOBJS)
-        tlib $@ $(TLIBTHERMO)
+	tlib $@ $(TLIBTHERMO)
 	
 clean:
-        del *.obj
-        del *.bak
+	del *.obj
+	del *.bak
 	del *.tds
 
 deep-clean: clean
-        del $(COMPAT_LIBNAME)
-        del $(CPROPEP_LIBNAME)
-        del $(THERMO_LIBNAME)
+	del $(COMPAT_LIBNAME)
+	del $(CPROPEP_LIBNAME)
+	del $(THERMO_LIBNAME)

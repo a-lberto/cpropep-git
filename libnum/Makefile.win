@@ -22,22 +22,22 @@ LIBNUM = libnum.lib
 all: $(LIBNUM) $(PROG)
 
 .c.obj:
-        $(CC) $(DEF) $(COPT) -c $*.c -o $*.obj
+	$(CC) $(DEF) $(COPT) -c $*.c -o $*.obj
 
 $(LIBNUM): $(OBJS) 
 	tlib $@ $(TLIBNUM)
 	
 $(PROG): $(PROGOBJS) 
-        $(CC) $(LDOPT) $(LIBNUM) $(PROGOBJS) 
+	$(CC) $(LDOPT) $(LIBNUM) $(PROGOBJS) 
 
 clean:
-        del *.obj
+	del *.obj
 	del *.bak
 	del *.tds
 	
 deep-clean: clean
-        del $(LIBNUM)
-        del $(PROG) 
+	del $(LIBNUM)
+	del $(PROG) 
 
 
 
